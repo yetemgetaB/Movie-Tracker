@@ -1,0 +1,151 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=Space+Grotesk:wght@400;500;600;700&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --background: 220 20% 7%;
+    --foreground: 210 20% 92%;
+
+    --card: 220 18% 10%;
+    --card-foreground: 210 20% 92%;
+
+    --popover: 220 18% 10%;
+    --popover-foreground: 210 20% 92%;
+
+    --primary: 209 95% 24%;
+    --primary-foreground: 210 20% 95%;
+
+    --secondary: 220 15% 15%;
+    --secondary-foreground: 210 20% 85%;
+
+    --muted: 220 15% 13%;
+    --muted-foreground: 215 12% 50%;
+
+    --accent: 209 95% 24%;
+    --accent-foreground: 210 20% 95%;
+
+    --destructive: 0 72% 51%;
+    --destructive-foreground: 210 20% 92%;
+
+    --border: 220 15% 18%;
+    --input: 220 15% 18%;
+    --ring: 209 95% 24%;
+
+    --radius: 0.75rem;
+
+    /* Custom tokens */
+    --glass: 220 18% 10% / 0.6;
+    --glass-border: 220 15% 25% / 0.4;
+    --glow: 209 95% 24%;
+    --glow-soft: 209 95% 35% / 0.2;
+    --glow-medium: 209 95% 35% / 0.35;
+    --surface-hover: 220 15% 16%;
+
+    --sidebar-background: 220 20% 7%;
+    --sidebar-foreground: 210 20% 92%;
+    --sidebar-primary: 209 95% 24%;
+    --sidebar-primary-foreground: 210 20% 95%;
+    --sidebar-accent: 220 15% 15%;
+    --sidebar-accent-foreground: 210 20% 85%;
+    --sidebar-border: 220 15% 18%;
+    --sidebar-ring: 209 95% 24%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply bg-background text-foreground font-sans antialiased;
+    font-family: 'Inter', system-ui, sans-serif;
+  }
+
+  h1, h2, h3, h4, h5, h6 {
+    font-family: 'Space Grotesk', 'Inter', system-ui, sans-serif;
+  }
+}
+
+@layer components {
+  .glass-panel {
+    @apply bg-card/60 backdrop-blur-xl border border-white/[0.06] rounded-xl;
+  }
+
+  .glass-panel-strong {
+    @apply bg-card/80 backdrop-blur-2xl border border-white/[0.08] rounded-xl;
+  }
+
+  .glow-border {
+    @apply border border-primary/20 shadow-[0_0_15px_hsl(var(--glow-soft)),inset_0_0_15px_hsl(var(--glow-soft))];
+  }
+
+  .glow-text {
+    @apply text-primary drop-shadow-[0_0_8px_hsl(var(--glow-soft))];
+  }
+
+  .glow-box {
+    @apply shadow-[0_0_20px_hsl(var(--glow-soft)),0_0_60px_hsl(var(--glow-soft))];
+  }
+
+  .nav-glow {
+    @apply bg-card/70 backdrop-blur-2xl border border-white/[0.08] shadow-[0_-4px_30px_hsl(var(--glow-soft)),0_0_50px_hsl(var(--glow-soft))];
+  }
+
+  .card-hover {
+    @apply transition-all duration-300 hover:border-primary/30 hover:shadow-[0_0_20px_hsl(var(--glow-soft))] hover:scale-[1.02];
+  }
+
+  .mica-bg {
+    background: radial-gradient(ellipse at top, hsl(220 18% 12%) 0%, hsl(220 20% 7%) 70%);
+  }
+
+  .fade-up {
+    animation: fadeUp 0.5s ease-out forwards;
+    opacity: 0;
+  }
+
+  .poster-card {
+    @apply relative overflow-hidden rounded-lg transition-all duration-300 cursor-pointer;
+  }
+
+  .poster-card:hover {
+    @apply scale-105 shadow-[0_8px_30px_hsl(var(--glow-soft))];
+  }
+
+  .poster-card:hover .poster-overlay {
+    @apply opacity-100;
+  }
+
+  .scrollbar-hide::-webkit-scrollbar {
+    display: none;
+  }
+  .scrollbar-hide {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+}
+
+@keyframes fadeUp {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes shimmer {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+
+@keyframes pulse-glow {
+  0%, 100% { box-shadow: 0 0 15px hsl(209 95% 35% / 0.2); }
+  50% { box-shadow: 0 0 30px hsl(209 95% 35% / 0.4); }
+}
