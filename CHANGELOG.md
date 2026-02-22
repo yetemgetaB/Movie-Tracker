@@ -63,6 +63,39 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [1.1.1] - 2024-02-22
+
+### Added
+- Custom window decorations with close/minimize/maximize buttons
+- Professional title bar with version badge and help buttons
+- Comprehensive keyboard shortcuts for all major actions
+- Enhanced update system with proper app restart functionality
+- Automatic update notifications on app startup
+- Improved window management and user experience
+
+### Changed
+- Removed default OS window decorations for custom UI
+- Enhanced keyboard navigation throughout the app
+- Improved update installation flow with proper restart
+- Optimized window state management
+- Enhanced user feedback and notifications
+
+### Features
+- 🎨 **Custom Window Controls** - Professional close/minimize/maximize buttons
+- ⌨️ **Keyboard Shortcuts** - Ctrl+K search, Ctrl+, settings, and more
+- 🔄 **Enhanced Updates** - Better restart and notification system
+- 🎯 **Professional UI** - Custom title bar with version display
+- ⚡ **Improved UX** - Better navigation and user feedback
+
+### Technical
+- Custom window decorations using Tauri configuration
+- Comprehensive keyboard shortcut system
+- Enhanced update flow with proper app restart
+- Improved window state management
+- Better error handling and user notifications
+
+---
+
 ## [1.1.0] - 2024-02-22
 
 ### Added
