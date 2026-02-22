@@ -30,8 +30,8 @@ const UpdateButton = () => {
  
       // Mock update info for demonstration
       const mockUpdateInfo: UpdateInfo = {
-        available: true, // Set to true to test update dialog
-        currentVersion: '1.0.0',
+        available: false, // Set to true to test update dialog
+        currentVersion: '1.1.0',
         latestVersion: '1.1.0',
         body: '### What\'s Changed\n\n- Added watchlist functionality\n- Enhanced analytics dashboard\n- Improved import/export system\n- Bug fixes and performance improvements',
         date: new Date().toISOString()
