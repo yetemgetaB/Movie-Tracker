@@ -29,41 +29,6 @@ export class ChangelogManager {
     // For now, we'll use the hardcoded changelog data
     this.changelog = [
       {
-        version: "1.1.1",
-        date: "2024-02-22",
-        changes: {
-          added: [
-            "Custom window decorations with close/minimize/maximize buttons",
-            "Professional title bar with version badge and help buttons",
-            "Comprehensive keyboard shortcuts for all major actions",
-            "Enhanced update system with proper app restart functionality",
-            "Automatic update notifications on app startup",
-            "Improved window management and user experience"
-          ],
-          changed: [
-            "Removed default OS window decorations for custom UI",
-            "Enhanced keyboard navigation throughout the app",
-            "Improved update installation flow with proper restart",
-            "Optimized window state management",
-            "Enhanced user feedback and notifications"
-          ],
-          features: [
-            "🎨 Custom Window Controls - Professional close/minimize/maximize buttons",
-            "⌨️ Keyboard Shortcuts - Ctrl+K search, Ctrl+, settings, and more",
-            "🔄 Enhanced Updates - Better restart and notification system",
-            "🎯 Professional UI - Custom title bar with version display",
-            "⚡ Improved UX - Better navigation and user feedback"
-          ],
-          technical: [
-            "Custom window decorations using Tauri configuration",
-            "Comprehensive keyboard shortcut system",
-            "Enhanced update flow with proper app restart",
-            "Improved window state management",
-            "Better error handling and user notifications"
-          ]
-        }
-      },
-      {
         version: "1.1.0",
         date: "2024-02-22",
         changes: {
