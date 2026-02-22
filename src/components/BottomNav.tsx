@@ -1,11 +1,13 @@
 import { NavLink as RouterNavLink, useLocation } from "react-router-dom";
-import { Home, Film, Tv, Database, Settings } from "lucide-react";
+import { Home, Film, Tv, Database, Settings, BarChart3, Clock } from "lucide-react";
 
 const navItems = [
   { to: "/", icon: Home, label: "Home" },
   { to: "/movies", icon: Film, label: "Movies" },
   { to: "/series", icon: Tv, label: "Series" },
   { to: "/library", icon: Database, label: "Vault" },
+  { to: "/watchlist", icon: Clock, label: "Watchlist" },
+  { to: "/analytics", icon: BarChart3, label: "Analytics" },
   { to: "/settings", icon: Settings, label: "Settings" },
 ];
 

@@ -3,13 +3,18 @@ import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { useEffect, useState } from "react";
 import AppLayout from "./components/AppLayout";
+import UpdateNotification from "./components/UpdateNotification";
 import HomePage from "./pages/HomePage";
 import MoviesPage from "./pages/MoviesPage";
 import SeriesPage from "./pages/SeriesPage";
 import VaultPage from "./pages/VaultPage";
 import SettingsPage from "./pages/SettingsPage";
+import AnalyticsPage from "./pages/AnalyticsPage";
+import WatchlistPage from "./pages/WatchlistPage";
 import NotFound from "./pages/NotFound";
+import AppUpdater from "./lib/updater";
 
 const queryClient = new QueryClient();
 
@@ -17,23 +22,53 @@ const LayoutWrapper = ({ children }: { children: React.ReactNode }) => (
   <AppLayout>{children}</AppLayout>
 );
 
-const App = () => (
-  <QueryClientProvider client={queryClient}>
-    <TooltipProvider>
-      <Toaster />
-      <Sonner />
-      <BrowserRouter>
-        <Routes>
-          <Route path="/" element={<LayoutWrapper><HomePage /></LayoutWrapper>} />
-          <Route path="/movies" element={<LayoutWrapper><MoviesPage /></LayoutWrapper>} />
-          <Route path="/series" element={<LayoutWrapper><SeriesPage /></LayoutWrapper>} />
-          <Route path="/library" element={<LayoutWrapper><VaultPage /></LayoutWrapper>} />
-          <Route path="/settings" element={<LayoutWrapper><SettingsPage /></LayoutWrapper>} />
-          <Route path="*" element={<LayoutWrapper><NotFound /></LayoutWrapper>} />
-        </Routes>
-      </BrowserRouter>
-    </TooltipProvider>
-  </QueryClientProvider>
-);
+const App = () => {
+  const [showUpdateNotification, setShowUpdateNotification] = useState(false);
+
+  useEffect(() => {
+    // Check for updates on app startup
+    const initializeUpdater = async () => {
+      try {
+        const updater = AppUpdater.getInstance();
+        await updater.checkOnStartup();
+        
+        // Show notification if update is available
+        const updateInfo = updater.getUpdateInfo();
+        if (updateInfo?.available) {
+          setShowUpdateNotification(true);
+        }
+      } catch (error) {
+        console.error('Failed to initialize updater:', error);
+      }
+    };
+
+    initializeUpdater();
+  }, []);
+
+  return (
+    <QueryClientProvider client={queryClient}>
+      <TooltipProvider>
+        <Toaster />
+        <Sonner />
+        <BrowserRouter>
+          <Routes>
+            <Route path="/" element={<LayoutWrapper><HomePage /></LayoutWrapper>} />
+            <Route path="/movies" element={<LayoutWrapper><MoviesPage /></LayoutWrapper>} />
+            <Route path="/series" element={<LayoutWrapper><SeriesPage /></LayoutWrapper>} />
+            <Route path="/library" element={<LayoutWrapper><VaultPage /></LayoutWrapper>} />
+            <Route path="/settings" element={<LayoutWrapper><SettingsPage /></LayoutWrapper>} />
+            <Route path="/analytics" element={<LayoutWrapper><AnalyticsPage /></LayoutWrapper>} />
+            <Route path="/watchlist" element={<LayoutWrapper><WatchlistPage /></LayoutWrapper>} />
+            <Route path="*" element={<LayoutWrapper><NotFound /></LayoutWrapper>} />
+          </Routes>
+        </BrowserRouter>
+        
+        {showUpdateNotification && (
+          <UpdateNotification onClose={() => setShowUpdateNotification(false)} />
+        )}
+      </TooltipProvider>
+    </QueryClientProvider>
+  );
+};
 
 export default App;

@@ -29,6 +29,8 @@ Format: `MAJOR.MINOR.PATCH`
 - [ ] **Enhanced Analytics Dashboard** - Viewing statistics, trends, insights
 - [ ] **Smart Recommendation Engine** - Based on viewing history, ratings, genres
 - [ ] **Notification System** - New episodes, movie releases, reminders
+- [ ] **Update Notification System** - Notify users about available updates
+- [ ] **Watchlist on the navbar**
 
 ### 🔧 Improvements
 - [ ] Fix GitHub view/display issues

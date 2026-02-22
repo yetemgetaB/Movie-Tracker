@@ -13,6 +13,7 @@ import { tmdbSeriesApi, omdbApi, img, imgOriginal } from "@/lib/tmdb";
 import { addToCollection, type CollectionSeries } from "@/lib/collection";
 import RatingBadge from "@/components/RatingBadge";
 import EpisodeRatingGrid from "@/components/EpisodeRatingGrid";
+import WatchlistButton from "@/components/WatchlistButton";
 import { toast } from "@/hooks/use-toast";
 
 interface Props {
@@ -338,6 +339,34 @@ const SeriesDetailView = ({ seriesId, onBack, onSelectSeries }: Props) => {
         <Button onClick={() => setShowAddDialog(true)} className="w-full bg-primary text-primary-foreground hover:bg-primary/90 glow-border">
           <Plus size={16} className="mr-2" /> Add to Collection
         </Button>
+
+        {/* Watchlist Button */}
+        {series && (
+          <WatchlistButton 
+            item={{
+              id: series.id,
+              type: "series",
+              title: series.name,
+              poster: series.poster_path || "",
+              genre: series.genres?.map((g: any) => g.name).join(", ") || "",
+              year: series.first_air_date?.split("-")[0] || "",
+              seasons: series.number_of_seasons || 0,
+              episodes: series.number_of_episodes || 0,
+              director: credits?.crew?.find((c: any) => c.job === "Director")?.name || "",
+              stars: credits?.cast?.slice(0, 3).map((c: any) => c.name).join(", ") || "",
+              rated: "",
+              imdb: "",
+              rt: "",
+              userRating: "",
+              startDate: "",
+              finishDate: "",
+              status: "",
+              nextSeason: "",
+              addedAt: "",
+            }}
+            className="w-full"
+          />
+        )}
 
         {/* Similar Series */}
         {similar.length > 0 && (

@@ -18,6 +18,8 @@ import { getCollection, type CollectionItem } from "@/lib/collection";
 
 import { useAccentColor, ACCENT_PRESETS, type AccentColor } from "@/hooks/use-accent-color";
 import { toast } from "@/hooks/use-toast";
+import ImportExportButton from "@/components/ImportExportButton";
+import UpdateButton from "@/components/UpdateButton";
 
 const GENRE_COLORS = [
   "hsl(209, 95%, 35%)", "hsl(260, 70%, 60%)", "hsl(340, 70%, 55%)",
@@ -477,36 +479,8 @@ const SettingsPage = () => {
       </section>
 
       {/* Data Management */}
-      <section className="glass-panel p-5 space-y-4 fade-up" style={{ animationDelay: "0.15s" }}>
-        <div className="flex items-center gap-2">
-          <Download size={18} className="text-primary" />
-          <h2 className="font-display font-semibold">Data Management</h2>
-        </div>
-        <Separator className="bg-border/50" />
-        <p className="text-xs text-muted-foreground">
-          Export your collection in multiple formats or import from a backup.
-        </p>
-        <div>
-          <p className="text-xs font-medium mb-2">Export As</p>
-          <div className="flex gap-2">
-            <Button variant="outline" size="sm" onClick={() => handleExport("json")} className="flex-1 border-border/50 hover:bg-secondary/50">
-              <FileJson size={14} className="mr-1.5" /> JSON
-            </Button>
-            <Button variant="outline" size="sm" onClick={() => handleExport("csv")} className="flex-1 border-border/50 hover:bg-secondary/50">
-              <FileSpreadsheet size={14} className="mr-1.5" /> CSV
-            </Button>
-            <Button variant="outline" size="sm" onClick={() => handleExport("txt")} className="flex-1 border-border/50 hover:bg-secondary/50">
-              <FileText size={14} className="mr-1.5" /> TXT
-            </Button>
-          </div>
-        </div>
-        <div>
-          <p className="text-xs font-medium mb-2">Import</p>
-          <Button variant="outline" size="sm" onClick={() => importRef.current?.click()} className="w-full border-border/50 hover:bg-secondary/50 hover:border-primary/30">
-            <Upload size={14} className="mr-2" /> Import Data (JSON or CSV)
-          </Button>
-          <input ref={importRef} type="file" accept=".json,.csv" onChange={handleImport} className="hidden" />
-        </div>
+      <section className="fade-up" style={{ animationDelay: "0.15s" }}>
+        <ImportExportButton />
       </section>
 
       {/* Appearance */}
@@ -587,9 +561,16 @@ const SettingsPage = () => {
 
       {/* About */}
       <section className="glass-panel p-5 fade-up" style={{ animationDelay: "0.28s" }}>
-        <div className="text-center space-y-1">
-          <p className="font-display font-semibold glow-text">Movie Tracker</p>
-          <p className="text-xs text-muted-foreground">v1.0.0 · Built with ❤️</p>
+        <div className="text-center space-y-4">
+          <div>
+            <p className="font-display font-semibold glow-text">Movie Tracker</p>
+            <p className="text-xs text-muted-foreground">v1.1.0 · Built with ❤️</p>
+          </div>
+          
+          {/* Update Section */}
+          <div className="flex items-center justify-center gap-3 pt-2 border-t">
+            <UpdateButton />
+          </div>
         </div>
       </section>
     </div>

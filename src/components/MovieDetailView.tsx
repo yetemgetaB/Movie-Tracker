@@ -10,6 +10,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { tmdbApi, omdbApi, img, imgOriginal } from "@/lib/tmdb";
 import { addToCollection, type CollectionMovie } from "@/lib/collection";
 import RatingBadge from "@/components/RatingBadge";
+import WatchlistButton from "@/components/WatchlistButton";
 import { toast } from "@/hooks/use-toast";
 
 interface Props {
@@ -248,6 +249,34 @@ const MovieDetailView = ({ movieId, onBack, onSelectMovie }: Props) => {
         <Button onClick={() => setShowAddDialog(true)} className="w-full bg-primary text-primary-foreground hover:bg-primary/90 glow-border">
           <Plus size={16} className="mr-2" /> Add to Collection
         </Button>
+
+        {/* Watchlist Button */}
+        {movie && (
+          <WatchlistButton 
+            item={{
+              id: movie.id,
+              type: "movie",
+              title: movie.title,
+              poster: movie.poster_path || "",
+              genre: movie.genres?.map((g: any) => g.name).join(", ") || "",
+              year: movie.release_date?.split("-")[0] || "",
+              seasons: 0,
+              episodes: 0,
+              director: credits?.crew?.find((c: any) => c.job === "Director")?.name || "",
+              stars: credits?.cast?.slice(0, 3).map((c: any) => c.name).join(", ") || "",
+              rated: "",
+              imdb: "",
+              rt: "",
+              userRating: "",
+              startDate: "",
+              finishDate: "",
+              status: "",
+              nextSeason: "",
+              addedAt: "",
+            }}
+            className="w-full"
+          />
+        )}
 
         {/* Similar Movies */}
         {similar.length > 0 && (
