@@ -137,7 +137,30 @@ The application uses Tauri for desktop runtime. The React frontend communicates 
 - **Accent Colors** - Multiple color presets
 - **Layout Options** - Responsive design for all screen sizes
 
-## 📸 Screenshots
+## � Project Planning
+
+### 📁 Documentation
+- [**ROADMAP.md**](./ROADMAP.md) - Detailed feature planning and version strategy
+- [**CHANGELOG.md**](./CHANGELOG.md) - Version history and release notes
+
+### 🚀 Development Strategy
+We're following a phased approach:
+- **v1.1.0** - Core improvements and missing features
+- **v1.2.0** - Enhanced user experience
+- **v1.3.0** - Cloud integration
+- **v2.0.0** - Major expansion (streaming, mobile)
+
+### 🎯 Current Focus
+Starting with v1.1.0 implementation:
+- Auto-update system
+- Import/Export functionality  
+- Enhanced analytics
+- Smart recommendations
+- Notification system
+
+---
+
+## �📸 Screenshots
 
 <div align="center">
   <img src="assets\Screenshot 2.png" width="45%">

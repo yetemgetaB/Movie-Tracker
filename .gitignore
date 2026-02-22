@@ -70,3 +70,60 @@ pids
 # Temporary folders
 tmp/
 temp/
+
+# Documentation files (keep in repo, but ignore working drafts)
+# ROADMAP.md and CHANGELOG.md should be tracked
+# *.draft.md
+
+# IDE specific
+.vscode/settings.json
+.vscode/launch.json
+.vscode/extensions.json
+*.code-workspace
+
+# Additional development files
+*.backup
+*.old
+*.orig
+*.rej
+
+# API keys and secrets (redundant with .env but explicit)
+api-keys.json
+secrets.json
+credentials.json
+
+# Database files (if using local DB)
+*.db
+*.sqlite
+*.sqlite3
+
+# Build artifacts specific to Tauri
+src-tauri/target/debug/
+src-tauri/target/release/
+src-tauri/target/.rustc_info.json
+src-tauri/target/CACHEDIR.TAG
+
+# Package manager specific
+package-lock.json
+yarn.lock
+pnpm-lock.yaml
+bun.lockb
+
+# Testing coverage
+coverage/
+*.lcov
+.nyc_output
+
+# Profiling
+*.prof
+*.pprof
+
+# Local development
+.local/
+.cache/
+.parcel-cache/
+
+# OS specific
+.DS_Store
+Thumbs.db
+desktop.ini
