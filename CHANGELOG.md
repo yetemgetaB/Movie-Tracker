@@ -63,6 +63,42 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [1.1.0] - 2024-02-22
+
+### Added
+- Watchlist functionality with priority levels and notes
+- Analytics dashboard with detailed charts and statistics
+- Import/Export system supporting JSON and CSV formats
+- Auto-update system with in-app changelog viewer
+- Enhanced UI with professional update notifications
+- UpdateNotification component for automatic update checks
+- WatchlistButton component for easy watchlist management
+- ImportExportButton for data backup and restore
+- Enhanced navigation with watchlist and analytics pages
+
+### Changed
+- Improved update system to automatically detect versions
+- Enhanced .gitignore for comprehensive coverage
+- Updated README.md with new features and documentation
+- Optimized build configuration for production
+- Enhanced Settings page with update management
+
+### Features
+- 📋 **Watchlist** - Add movies/series to personal watchlist with priorities
+- 📈 **Analytics Dashboard** - Detailed statistics with interactive charts
+- 📤 **Import/Export** - Backup and restore data in JSON/CSV formats
+- 🔄 **Auto-Update** - Automatic update checking with changelog viewer
+- 🎨 **Enhanced UI** - Professional update notifications and dialogs
+
+### Technical
+- Automatic version detection from changelog
+- Enhanced error handling and user feedback
+- Production-ready build optimizations
+- Comprehensive documentation updates
+- Improved TypeScript coverage and type safety
+
+---
+
 ## [Upcoming Versions]
 
 ### [1.1.0] - Planned

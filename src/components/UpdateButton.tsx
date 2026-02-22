@@ -7,7 +7,8 @@ import {
   Calendar, ExternalLink, X 
 } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
- 
+import { ChangelogManager } from '@/lib/changelog';
+
 interface UpdateInfo {
   available: boolean;
   currentVersion: string;
@@ -28,22 +29,36 @@ const UpdateButton = () => {
       // Simulate update check (replace with actual Tauri updater when available)
       await new Promise(resolve => setTimeout(resolve, 2000));
  
-      // Mock update info for demonstration
-      const mockUpdateInfo: UpdateInfo = {
-        available: false, // Set to true to test update dialog
-        currentVersion: '1.1.0',
-        latestVersion: '1.1.0',
-        body: '### What\'s Changed\n\n- Added watchlist functionality\n- Enhanced analytics dashboard\n- Improved import/export system\n- Bug fixes and performance improvements',
-        date: new Date().toISOString()
+      // Get current version from package.json (in real app, this would be from Tauri)
+      const currentVersion = '1.1.0'; // This should come from app config
+      const changelogManager = ChangelogManager.getInstance();
+      const latestVersion = changelogManager.getLatestVersion();
+      
+      if (!latestVersion) {
+        toast({
+          title: 'Update Check Failed',
+          description: 'Unable to retrieve version information.',
+          variant: 'destructive',
+        });
+        return;
+      }
+
+      const hasUpdate = latestVersion.version !== currentVersion;
+      const updateInfo: UpdateInfo = {
+        available: hasUpdate,
+        currentVersion,
+        latestVersion: latestVersion.version,
+        body: changelogManager.formatChangelogMarkdown(latestVersion),
+        date: latestVersion.date
       };
+
+      setUpdateInfo(updateInfo);
  
-      setUpdateInfo(mockUpdateInfo);
- 
-      if (mockUpdateInfo.available) {
+      if (hasUpdate) {
         setShowUpdateDialog(true);
         toast({
           title: 'Update Available',
-          description: `Version ${mockUpdateInfo.latestVersion} is ready to install.`,
+          description: `Version ${updateInfo.latestVersion} is ready to install.`,
         });
       } else {
         toast({
