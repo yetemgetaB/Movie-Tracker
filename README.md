@@ -2,8 +2,8 @@
 
 <div align="center">
 
-![Movie Tracker](https://img.shields.io/badge/version-1.0.0-blue?style=for-the-badge&logo=react)
-![Tauri](https://img.shields.io/badge/Tauri-1.0.0-00C2FF?style=for-the-badge&logo=tauri&logoColor=white)
+![Movie Tracker](https://img.shields.io/badge/version-1.1.0-blue?style=for-the-badge&logo=react)
+![Tauri](https://img.shields.io/badge/Tauri-1.1.0-00C2FF?style=for-the-badge&logo=tauri&logoColor=white)
 ![Rust](https://img.shields.io/badge/Rust-000000?style=for-the-badge&logo=rust&logoColor=white)
 ![TypeScript](https://img.shields.io/badge/TypeScript-007ACC?style=for-the-badge&logo=typescript&logoColor=white)
 ![Tailwind CSS](https://img.shields.io/badge/Tailwind%20CSS-06B6D4?style=for-the-badge&logo=tailwindcss&logoColor=white)
@@ -26,6 +26,10 @@ A modern, lightweight desktop movie tracking application built with React and Ta
 - 🔒 **Secure** - Local storage only, no cloud dependencies
 - 📊 **Statistics** - Track viewing habits and preferences
 - 🎨 **Customizable** - Multiple themes and accent colors
+- 📋 **Watchlist** - Add movies and series to your personal watchlist
+- 📈 **Analytics Dashboard** - Detailed statistics and charts
+- 📤 **Import/Export** - Backup and restore your data in JSON/CSV formats
+- 🔄 **Auto-Update** - Automatic update checking and installation
 
 ## 🛠️ Tech Stack
 
@@ -46,13 +50,13 @@ A modern, lightweight desktop movie tracking application built with React and Ta
 ### 📥 Download & Install
 
 #### 🪟 Windows (Recommended)
-[![Windows](https://img.shields.io/badge/Windows-0078D4?style=for-the-badge&logo=windows&logoColor=white)](https://github.com/yetemgetaB/Movie-Tracker-Frontend/releases/latest/download/Movie-Tracker-Setup-1.0.0.exe)
+[![Windows](https://img.shields.io/badge/Windows-0078D4?style=for-the-badge&logo=windows&logoColor=white)](https://github.com/yetemgetaB/Movie-Tracker-Frontend/releases/latest/download/Movie-Tracker-Setup-1.1.0.exe)
 
 #### 🪟 macOS
-[![macOS](https://img.shields.io/badge/macOS-000000?style=for-the-badge&logo=apple&logoColor=white)](https://github.com/yetemgetaB/Movie-Tracker-Frontend/releases/latest/download/Movie-Tracker-1.0.0.dmg)
+[![macOS](https://img.shields.io/badge/macOS-000000?style=for-the-badge&logo=apple&logoColor=white)](https://github.com/yetemgetaB/Movie-Tracker-Frontend/releases/latest/download/Movie-Tracker-1.1.0.dmg)
 
 #### 🪟 Linux
-[![Linux](https://img.shields.io/badge/Linux-FCC624?style=for-the-badge&logo=linux&logoColor=white)](https://github.com/yetemgetaB/Movie-Tracker-Frontend/releases/latest/download/Movie-Tracker-1.0.0.AppImage)
+[![Linux](https://img.shields.io/badge/Linux-FCC624?style=for-the-badge&logo=linux&logoColor=white)](https://github.com/yetemgetaB/Movie-Tracker-Frontend/releases/latest/download/Movie-Tracker-1.1.0.AppImage)
 
 ### 🛠️ Build from Source
 
