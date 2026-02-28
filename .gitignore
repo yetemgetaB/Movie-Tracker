@@ -283,3 +283,7 @@ docs/examples/
 *.old
 *.orig
 *.rej
+
+# Development folders (keep main project clean)
+movie-tracker-combined/
+Sample Projects/
