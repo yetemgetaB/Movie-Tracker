@@ -1,19 +1,19 @@
 {
-  "version": "1.2.0",
-  "notes": "🎉 Media Hub Deluxe Integration Complete!\n\n✨ **Major Features Added:**\n- **Enhanced Navigation** - Modern navbar with all pages accessible\n- **New Pages** - Browse, Calendar with full functionality  \n- **Improved Pages** - Home, Movies, Series, Analytics, Settings, Watchlist\n- **Enhanced Components** - Netflix cards, rating badges, episode grids\n- **Advanced Features** - Custom watchlists, priority management, progress tracking\n\n🔧 **Critical Fixes:**\n- **Black Screen Issue** - Fixed completely when clicking movies/series\n- **Console Errors** - All JavaScript errors resolved\n- **Navigation Problems** - All routes working properly\n- **Missing Functionality** - All features from media-hub-deluxe integrated\n\n🎯 **Improvements:**\n- Enhanced error handling with proper loading states\n- Better user experience with fallbacks for missing API keys\n- Improved navigation with all pages accessible\n- Enhanced watchlist with custom lists and priorities\n- Better component organization and imports\n\n📱 **All Pages Working:**\n- ✅ Home (media-hub-deluxe version)\n- ✅ Movies (media-hub-deluxe version) \n- ✅ Series (media-hub-deluxe version)\n- ✅ Browse (new from media-hub-deluxe)\n- ✅ Calendar (new from media-hub-deluxe)\n- ✅ Watchlist (enhanced from media-hub-deluxe)\n- ✅ Analytics (media-hub-deluxe version)\n- ✅ Settings (media-hub-deluxe version)\n- ✅ Vault (original functionality preserved)\n\n🚀 **Tauri Features:**\n- Auto-update functionality with install & restart\n- Enhanced settings with update management\n- Better desktop integration\n\n🎊 **Ready for Production!**",
-  "pub_date": "2026-03-01T00:00:00Z",
+  "version": "1.2.1",
+  "notes": "🔧 Minor Fixes & Keyboard Shortcuts\n\n✨ **New Features:**\n- **Working Keyboard Shortcuts** - All shortcuts now functional\n- **Enhanced Navigation** - Better keyboard controls\n\n🔧 **Fixes:**\n- **Keyboard Shortcuts** - Added working keyboard shortcuts functionality\n- **Dynamic Import** - Fixed Tauri updater import warning\n- **Enhanced User Experience** - Better navigation controls\n\n⌨️ **Working Shortcuts:**\n- **Ctrl+K** - Open search (when implemented)\n- **Alt+H/M/S** - Navigate to Home/Movies/Series\n- **Escape** - Close dialogs and go back\n- **F/F11** - Toggle fullscreen\n\n🚀 **Tauri Features:**\n- Auto-update functionality working\n- Keyboard shortcuts functional in desktop app\n- Better desktop integration\n\n� **Ready for Testing!**",
+  "pub_date": "2026-03-01T00:30:00Z",
   "platforms": {
     "windows": {
       "signature": "",
-      "url": "https://github.com/yetemgetaB/Movie-Tracker-Frontend/releases/download/v1.2.0/Movie.Tracker.1.2.0.x64.msi"
+      "url": "https://github.com/yetemgetaB/Movie-Tracker-Frontend/releases/download/v1.2.1/Movie.Tracker.1.2.1.x64.msi"
     },
     "darwin": {
       "signature": "",
-      "url": "https://github.com/yetemgetaB/Movie-Tracker-Frontend/releases/download/v1.2.0/Movie.Tracker.1.2.0.dmg"
+      "url": "https://github.com/yetemgetaB/Movie-Tracker-Frontend/releases/download/v1.2.1/Movie.Tracker.1.2.1.dmg"
     },
     "linux": {
       "signature": "",
-      "url": "https://github.com/yetemgetaB/Movie-Tracker-Frontend/releases/download/v1.2.0/Movie.Tracker.1.2.0.AppImage"
+      "url": "https://github.com/yetemgetaB/Movie-Tracker-Frontend/releases/download/v1.2.1/Movie.Tracker.1.2.1.AppImage"
     }
   }
 }
