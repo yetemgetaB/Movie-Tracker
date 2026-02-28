@@ -30,7 +30,7 @@ const UpdateButton = () => {
       await new Promise(resolve => setTimeout(resolve, 2000));
  
       // Get current version from package.json (in real app, this would be from Tauri)
-      const currentVersion = '1.1.1'; // This should come from app config
+      const currentVersion = '1.1.0'; // This should come from app config
       const changelogManager = ChangelogManager.getInstance();
       const latestVersion = changelogManager.getLatestVersion();
       
@@ -82,16 +82,14 @@ const UpdateButton = () => {
     try {
       // Simulate update installation (replace with actual Tauri updater)
       await new Promise(resolve => setTimeout(resolve, 3000));
-
+ 
       toast({
         title: 'Update Installed',
         description: 'Update has been installed successfully. Restarting app...',
       });
-
-      // Simulate app restart - in real app, this would use Tauri's restart API
+ 
+      // Simulate app restart
       setTimeout(() => {
-        // In production, this would be: await window.__TAURI__.process.relaunch();
-        // For now, we'll just reload the page
         window.location.reload();
       }, 2000);
     } catch (error) {
