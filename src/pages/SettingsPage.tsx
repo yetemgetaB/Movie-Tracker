@@ -13,7 +13,7 @@ import { useToast } from "@/hooks/use-toast";
 import { check } from "@tauri-apps/plugin-updater";
 import { relaunch } from "@tauri-apps/plugin-process";
 
-const APP_VERSION = "1.2.0";
+const APP_VERSION = "1.2.1";
 const GITHUB_REPO = "yetemgetaB/Movie-Tracker";
 const GITHUB_URL = `https://github.com/${GITHUB_REPO}`;
 
@@ -392,6 +392,59 @@ export default function SettingsPage() {
       fetchReleases();
     }
   }, [activeSection, fetchGithubInfo, fetchReleases]);
+
+  // Keyboard shortcuts handler
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      // Global shortcuts
+      if (e.ctrlKey && e.key === 'k') {
+        e.preventDefault();
+        // Focus search (would need search implementation)
+        return;
+      }
+
+      // Navigation shortcuts
+      if (e.altKey || e.metaKey) {
+        switch (e.key.toLowerCase()) {
+          case 'h':
+            e.preventDefault();
+            window.location.href = '/';
+            break;
+          case 'm':
+            e.preventDefault();
+            window.location.href = '/movies';
+            break;
+          case 's':
+            e.preventDefault();
+            window.location.href = '/series';
+            break;
+        }
+      }
+
+      // Other shortcuts
+      switch (e.key) {
+        case 'Escape':
+          // Close dialogs or go back
+          const closeButton = document.querySelector('[data-testid="close-button"]') as HTMLButtonElement;
+          if (closeButton) closeButton.click();
+          break;
+        case 'f':
+        case 'F11':
+          e.preventDefault();
+          if (!document.fullscreenElement) {
+            document.documentElement.requestFullscreen();
+          } else {
+            document.exitFullscreen();
+          }
+          break;
+      }
+    };
+
+    document.addEventListener('keydown', handleKeyDown);
+    return () => {
+      document.removeEventListener('keydown', handleKeyDown);
+    };
+  }, []);
 
   const checkForUpdate = async () => {
     setCheckingUpdate(true);
