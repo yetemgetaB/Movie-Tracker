@@ -3,15 +3,17 @@ import {
   Settings, Key, Palette, Monitor, Database, Accessibility, Keyboard,
   Eye, EyeOff, CheckCircle, XCircle, Trash2, Download, Upload, RotateCcw,
   Star, RefreshCw, Loader2, ChevronDown,
-  Info, ExternalLink, Heart, Image as ImageIcon, Zap, Tag, GitBranch
+  Info, ExternalLink, Heart, Image as ImageIcon, Zap, Tag, GitBranch, DownloadCloud
 } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
 import { applyStoredTheme } from "@/components/AppLayout";
 import { useAccentColor } from "@/hooks/use-accent-color";
 import { useToast } from "@/hooks/use-toast";
+import { check } from "@tauri-apps/plugin-updater";
+import { relaunch } from "@tauri-apps/plugin-process";
 
-const APP_VERSION = "1.0.0";
+const APP_VERSION = "1.2.0";
 const GITHUB_REPO = "yetemgetaB/Movie-Tracker";
 const GITHUB_URL = `https://github.com/${GITHUB_REPO}`;
 
@@ -395,24 +397,65 @@ export default function SettingsPage() {
     setCheckingUpdate(true);
     setUpdateStatus(null);
     setUpdateAvailable(null);
+    
     try {
-      const res = await fetch(`https://api.github.com/repos/${GITHUB_REPO}/releases/latest`);
-      const data = await res.json();
-      if (data.tag_name) {
-        const latest = data.tag_name.replace(/^v/, "");
-        if (latest === APP_VERSION) {
-          setUpdateStatus(`✓ You're on the latest version (v${APP_VERSION})`);
+      // Check if running in Tauri environment
+      if (window.__TAURI__) {
+        // Use Tauri updater
+        const { update, shouldUpdate } = await check();
+        if (shouldUpdate) {
+          setUpdateStatus(`🆕 Update available: ${update.version}`);
+          setUpdateAvailable({ 
+            tag: `v${update.version}`, 
+            url: update.body?.signature || "", 
+            body: update.body?.notes || "",
+            tauriUpdate: update
+          });
         } else {
-          setUpdateStatus(`🆕 Update available: ${data.tag_name}`);
-          setUpdateAvailable({ tag: data.tag_name, url: data.html_url, body: data.body || "" });
+          setUpdateStatus(`✓ You're on the latest version (v${APP_VERSION})`);
         }
       } else {
-        setUpdateStatus("No releases found on GitHub.");
+        // Web version - check GitHub releases
+        const res = await fetch(`https://api.github.com/repos/${GITHUB_REPO}/releases/latest`);
+        const data = await res.json();
+        if (data.tag_name) {
+          const latest = data.tag_name.replace(/^v/, "");
+          if (latest === APP_VERSION) {
+            setUpdateStatus(`✓ You're on the latest version (v${APP_VERSION})`);
+          } else {
+            setUpdateStatus(`🆕 Update available: ${data.tag_name}`);
+            setUpdateAvailable({ tag: data.tag_name, url: data.html_url, body: data.body || "" });
+          }
+        } else {
+          setUpdateStatus("No releases found on GitHub.");
+        }
       }
-    } catch {
+    } catch (error) {
+      console.error('Update check failed:', error);
       setUpdateStatus("Could not check for updates — check your connection.");
     }
     setCheckingUpdate(false);
+  };
+
+  const installUpdate = async () => {
+    if (!updateAvailable?.tauriUpdate) return;
+    
+    try {
+      setUpdateStatus("📦 Installing update...");
+      // Import install dynamically
+      const { install } = await import("@tauri-apps/plugin-updater");
+      await install(updateAvailable.tauriUpdate);
+      setUpdateStatus("✅ Update installed! Restarting...");
+      await relaunch();
+    } catch (error) {
+      console.error('Update installation failed:', error);
+      setUpdateStatus("❌ Failed to install update.");
+      toast({ 
+        title: "Update Failed", 
+        description: "Could not install the update. Please try again.", 
+        variant: "destructive" 
+      });
+    }
   };
 
   function saveTheme(t: string) {
@@ -981,14 +1024,31 @@ export default function SettingsPage() {
                 </div>
               )}
               <div className="flex gap-2">
-                <a href={updateAvailable.url} target="_blank" rel="noopener noreferrer"
-                  className="flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl bg-primary text-primary-foreground text-sm font-semibold hover:opacity-90 transition-opacity">
-                  <ExternalLink size={14} /> View Release on GitHub
-                </a>
-                <button onClick={() => setUpdateAvailable(null)}
-                  className="px-4 py-2.5 rounded-xl border border-border text-sm text-muted-foreground hover:bg-secondary transition-colors">
-                  Later
-                </button>
+                {updateAvailable.tauriUpdate ? (
+                  <>
+                    <button 
+                      onClick={installUpdate}
+                      className="flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl bg-primary text-primary-foreground text-sm font-semibold hover:opacity-90 transition-opacity"
+                    >
+                      <DownloadCloud size={14} /> Install & Restart
+                    </button>
+                    <button onClick={() => setUpdateAvailable(null)}
+                      className="px-4 py-2.5 rounded-xl border border-border text-sm text-muted-foreground hover:bg-secondary transition-colors">
+                      Later
+                    </button>
+                  </>
+                ) : (
+                  <>
+                    <a href={updateAvailable.url} target="_blank" rel="noopener noreferrer"
+                      className="flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl bg-primary text-primary-foreground text-sm font-semibold hover:opacity-90 transition-opacity">
+                      <ExternalLink size={14} /> View Release on GitHub
+                    </a>
+                    <button onClick={() => setUpdateAvailable(null)}
+                      className="px-4 py-2.5 rounded-xl border border-border text-sm text-muted-foreground hover:bg-secondary transition-colors">
+                      Later
+                    </button>
+                  </>
+                )}
               </div>
             </div>
           </DialogContent>
