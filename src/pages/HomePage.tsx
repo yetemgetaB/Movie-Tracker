@@ -1,496 +1,614 @@
-import { useState, useEffect, useRef } from "react";
-import { ChevronRight, Play, Plus, Star, TrendingUp, Clock, Film, Tv, Sparkles, ChevronLeft, Search, Menu, AlertCircle, ExternalLink, PlayCircle } from "lucide-react";
+import { useState, useEffect, useRef, useCallback } from "react";
+import { Play, Info, ChevronLeft, ChevronRight, Volume2, VolumeX, AlertCircle, Plus, Star } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
+import { Badge } from "@/components/ui/badge";
+import { Skeleton } from "@/components/ui/skeleton";
 import { useQuery } from "@tanstack/react-query";
-import { tmdbApi, tmdbSeriesApi, img, imgOriginal } from "@/lib/tmdb";
+import { tmdbApi, tmdbSeriesApi, img, imgOriginal, hasTmdbKey, type TmdbMovie, type TmdbSeries } from "@/lib/tmdb";
 import { useNavigate } from "react-router-dom";
 import { getCollection } from "@/lib/collection";
+import { getWatchProgress } from "@/lib/watchProgress";
 import { toast } from "@/hooks/use-toast";
+import MovieDetailView from "@/components/MovieDetailView";
+import SeriesDetailView from "@/components/SeriesDetailView";
 
+
+const GENRE_MAP: Record<number, string> = {
+  28: "Action", 12: "Adventure", 16: "Animation", 35: "Comedy", 80: "Crime",
+  99: "Documentary", 18: "Drama", 10751: "Family", 14: "Fantasy", 36: "History",
+  27: "Horror", 10402: "Music", 9648: "Mystery", 10749: "Romance", 878: "Sci-Fi",
+  10770: "TV Movie", 53: "Thriller", 10752: "War", 37: "Western",
+};
+
+// ─── Mini Carousel Row ────────────────────────────────────────────────────────
 const ContentRow = ({
   title,
-  icon: Icon,
+  badge,
   items,
   type = "movie",
-  autoScroll = false,
+  onSelectItem,
 }: {
   title: string;
-  icon: React.ElementType;
-  items: { id: number; title: string; poster: string; year: string; rating: string }[];
+  badge?: string;
+  items: { id: number; title: string; poster: string | null; backdrop: string | null; year: string; rating: number; overview?: string; genre_ids?: number[] }[];
   type?: "movie" | "series";
-  autoScroll?: boolean;
+  onSelectItem: (id: number, type: "movie" | "series") => void;
 }) => {
-  const navigate = useNavigate();
   const scrollRef = useRef<HTMLDivElement>(null);
+  const [canScrollLeft, setCanScrollLeft] = useState(false);
+  const [canScrollRight, setCanScrollRight] = useState(true);
 
-  // Auto-scroll effect
-  useEffect(() => {
-    if (!autoScroll || items.length === 0) return;
+  const checkScroll = useCallback(() => {
     const el = scrollRef.current;
     if (!el) return;
-    let scrollPos = 0;
-    const timer = setInterval(() => {
-      scrollPos += 1;
-      if (scrollPos >= el.scrollWidth - el.clientWidth) scrollPos = 0;
-      el.scrollTo({ left: scrollPos, behavior: "auto" });
-    }, 30);
-    const stop = () => clearInterval(timer);
-    el.addEventListener("mouseenter", stop);
-    el.addEventListener("touchstart", stop);
-    return () => {
-      clearInterval(timer);
-      el.removeEventListener("mouseenter", stop);
-      el.removeEventListener("touchstart", stop);
-    };
-  }, [autoScroll, items.length]);
+    setCanScrollLeft(el.scrollLeft > 0);
+    setCanScrollRight(el.scrollLeft < el.scrollWidth - el.clientWidth - 10);
+  }, []);
 
-  const handleClick = (id: number) => {
-    navigate(type === "movie" ? `/movies?id=${id}` : `/series?id=${id}`);
+  useEffect(() => {
+    const el = scrollRef.current;
+    if (!el) return;
+    el.addEventListener("scroll", checkScroll);
+    checkScroll();
+    return () => el.removeEventListener("scroll", checkScroll);
+  }, [checkScroll, items]);
+
+  const scroll = (dir: "left" | "right") => {
+    const el = scrollRef.current;
+    if (!el) return;
+    el.scrollBy({ left: dir === "left" ? -600 : 600, behavior: "smooth" });
   };
 
-  const scroll = (dir: number) => {
-    scrollRef.current?.scrollBy({ left: dir * 300, behavior: "smooth" });
-  };
+  if (items.length === 0) return null;
 
   return (
-    <section className="space-y-3">
-      <div className="px-6 flex items-center justify-between">
-        <h2 className="text-lg font-semibold font-display flex items-center gap-2">
-          <Icon size={18} className="text-primary" />
-          {title}
-        </h2>
-        <div className="flex items-center gap-2">
-          <button onClick={() => scroll(-1)} className="p-1 rounded-lg hover:bg-secondary/50 text-muted-foreground hover:text-foreground transition-colors">
-            <ChevronLeft size={16} />
-          </button>
-          <button onClick={() => scroll(1)} className="p-1 rounded-lg hover:bg-secondary/50 text-muted-foreground hover:text-foreground transition-colors">
-            <ChevronRight size={16} />
-          </button>
-        </div>
+    <div className="group/row relative mb-8">
+      <div className="flex items-center gap-3 mb-3 px-6">
+        <h2 className="text-lg font-bold text-foreground">{title}</h2>
+        {badge && <Badge variant="outline" className="text-primary border-primary/30 text-xs">{badge}</Badge>}
       </div>
-      {items.length > 0 ? (
-        <div ref={scrollRef} className="flex gap-3 overflow-x-auto scrollbar-hide px-6 pb-2">
+
+      <div className="relative">
+        {canScrollLeft && (
+          <button
+            onClick={() => scroll("left")}
+            className="absolute left-0 top-0 bottom-0 z-20 w-12 flex items-center justify-center bg-gradient-to-r from-background to-transparent opacity-0 group-hover/row:opacity-100 transition-opacity hover:from-background/80"
+          >
+            <ChevronLeft size={24} />
+          </button>
+        )}
+
+        <div
+          ref={scrollRef}
+          className="flex gap-3 overflow-x-auto scrollbar-hide px-6 py-2"
+        >
           {items.map((item) => (
-            <div
+            <MoviePosterCard
               key={item.id}
-              className="poster-card flex-shrink-0 w-[140px] group cursor-pointer"
-              onClick={() => handleClick(item.id)}
-            >
-              <img src={item.poster} alt={item.title} className="w-full h-[210px] object-cover rounded-lg" loading="lazy" />
-              <div className="poster-overlay absolute inset-0 bg-gradient-to-t from-background/95 via-background/30 to-transparent opacity-0 transition-opacity flex flex-col justify-end p-3">
-                <p className="text-xs font-semibold truncate">{item.title}</p>
-                <div className="flex items-center gap-2 mt-1">
-                  <span className="flex items-center gap-0.5 text-[10px] text-primary">
-                    <Star size={10} fill="currentColor" /> {item.rating}
-                  </span>
-                  <span className="text-[10px] text-muted-foreground">{item.year}</span>
-                </div>
-              </div>
-            </div>
+              item={item}
+              type={type}
+              onSelect={() => onSelectItem(item.id, type)}
+            />
           ))}
         </div>
-      ) : (
-        <div className="mx-6 glass-panel p-6 text-center">
-          <div className="flex justify-center gap-3">
-            {[1, 2, 3, 4].map((i) => (
-              <div key={i} className="w-[100px] h-[150px] rounded-lg bg-secondary/50 animate-pulse" />
-            ))}
-          </div>
-        </div>
-      )}
-    </section>
+
+        {canScrollRight && (
+          <button
+            onClick={() => scroll("right")}
+            className="absolute right-0 top-0 bottom-0 z-20 w-12 flex items-center justify-center bg-gradient-to-l from-background to-transparent opacity-0 group-hover/row:opacity-100 transition-opacity hover:from-background/80"
+          >
+            <ChevronRight size={24} />
+          </button>
+        )}
+      </div>
+    </div>
   );
 };
 
-const mapMovies = (movies: { id: number; title: string; poster_path: string | null; release_date: string; vote_average: number }[]) =>
-  movies.map((m) => ({
-    id: m.id,
-    title: m.title,
-    poster: img(m.poster_path, "w342"),
-    year: m.release_date?.slice(0, 4) || "",
-    rating: m.vote_average.toFixed(1),
-  }));
+// ─── Movie Poster Card ────────────────────────────────────────────────────────
+const MoviePosterCard = ({
+  item,
+  type,
+  onSelect,
+}: {
+  item: { id: number; title: string; poster: string | null; backdrop: string | null; year: string; rating: number; overview?: string; genre_ids?: number[] };
+  type: "movie" | "series";
+  onSelect: () => void;
+}) => {
+  const [hovered, setHovered] = useState(false);
+  const [showCard, setShowCard] = useState(false);
+  const [cardStyle, setCardStyle] = useState<React.CSSProperties>({});
+  const cardRef = useRef<HTMLDivElement>(null);
+  const timerRef = useRef<ReturnType<typeof setTimeout>>();
+  const progress = getWatchProgress().find(p => p.id === item.id);
+  const genres = (item.genre_ids || []).map(id => GENRE_MAP[id]).filter(Boolean).slice(0, 3);
+  const matchScore = Math.round(40 + item.rating * 6);
 
-const mapSeries = (series: { id: number; name: string; poster_path: string | null; first_air_date: string; vote_average: number }[]) =>
-  series.map((s) => ({
-    id: s.id,
-    title: s.name,
-    poster: img(s.poster_path, "w342"),
-    year: s.first_air_date?.slice(0, 4) || "",
-    rating: s.vote_average.toFixed(1),
-  }));
+  const handleEnter = () => {
+    setHovered(true);
+    timerRef.current = setTimeout(() => {
+      if (cardRef.current) {
+        const rect = cardRef.current.getBoundingClientRect();
+        const vw = window.innerWidth;
+        const vh = window.innerHeight;
+        const cardW = 288;
+        const cardH = 340; // estimated expanded card height
 
-const HomePage = () => {
-  const navigate = useNavigate();
-  const [heroIndex, setHeroIndex] = useState(0);
-  const [searchQuery, setSearchQuery] = useState("");
-  const [showMobileMenu, setShowMobileMenu] = useState(false);
-  const [isSearching, setIsSearching] = useState(false);
-  const [searchResults, setSearchResults] = useState<{ movies: any[], series: any[] }>({ movies: [], series: [] });
-  const collection = getCollection();
+        // Horizontal: center on the card, clamp to viewport
+        let left = rect.left + rect.width / 2 - cardW / 2;
+        if (left + cardW > vw - 8) left = vw - cardW - 8;
+        if (left < 8) left = 8;
 
-  const { data: trending = [], error: trendingError } = useQuery({
-    queryKey: ["trending-movies"],
-    queryFn: tmdbApi.trending,
-    staleTime: 1000 * 60 * 5,
-    retry: false,
-  });
+        // Vertical: prefer appearing above-center of card, flip up if near bottom
+        let top = rect.top - 20;
+        if (top + cardH > vh - 16) {
+          top = rect.bottom - cardH + 20; // flip upward
+        }
+        if (top < 8) top = 8;
 
-  const { data: popular = [], error: popularError } = useQuery({
-    queryKey: ["popular-movies"],
-    queryFn: tmdbApi.popular,
-    staleTime: 1000 * 60 * 5,
-    retry: false,
-  });
-
-  const { data: topRated = [], error: topRatedError } = useQuery({
-    queryKey: ["top-rated-movies"],
-    queryFn: tmdbApi.topRated,
-    staleTime: 1000 * 60 * 5,
-    retry: false,
-  });
-
-  const { data: nowPlaying = [], error: nowPlayingError } = useQuery({
-    queryKey: ["now-playing"],
-    queryFn: tmdbApi.nowPlaying,
-    staleTime: 1000 * 60 * 5,
-    retry: false,
-  });
-
-  const { data: trendingSeries = [], error: trendingSeriesError } = useQuery({
-    queryKey: ["trending-series"],
-    queryFn: tmdbSeriesApi.trending,
-    staleTime: 1000 * 60 * 5,
-    retry: false,
-  });
-
-  const { data: popularSeries = [], error: popularSeriesError } = useQuery({
-    queryKey: ["popular-series"],
-    queryFn: tmdbSeriesApi.popular,
-    staleTime: 1000 * 60 * 5,
-    retry: false,
-  });
-
-  // Universal search functionality
-  const handleSearch = async (query: string) => {
-    setSearchQuery(query);
-    if (query.trim().length < 2) {
-      setSearchResults({ movies: [], series: [] });
-      return;
-    }
-    
-    setIsSearching(true);
-    try {
-      const [movieResults, seriesResults] = await Promise.all([
-        tmdbApi.search(query),
-        tmdbSeriesApi.search(query)
-      ]);
-      setSearchResults({ movies: movieResults, series: seriesResults });
-    } catch (error) {
-      console.error('Search error:', error);
-      toast({
-        title: "Search failed",
-        description: "Unable to search. Please check your API keys.",
-        variant: "destructive"
-      });
-    } finally {
-      setIsSearching(false);
-    }
+        setCardStyle({
+          position: "fixed",
+          top,
+          left,
+          width: cardW,
+          zIndex: 9999,
+        });
+        setShowCard(true);
+      }
+    }, 400);
   };
 
-  // Debounced search
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      handleSearch(searchQuery);
-    }, 300);
-    return () => clearTimeout(timer);
-  }, [searchQuery]);
-
-  // Check for API key errors and show helpful message
-  const hasApiKeyError = trendingError || popularError || topRatedError || nowPlayingError || trendingSeriesError || popularSeriesError;
-  
-  useEffect(() => {
-    if (hasApiKeyError && trendingError?.message?.includes('API key not found')) {
-      toast({
-        title: "API Keys Required",
-        description: "Please configure your TMDB and OMDB API keys in Settings.",
-        variant: "destructive",
-        action: (
-          <Button size="sm" onClick={() => navigate('/settings')}>
-            Configure Keys
-          </Button>
-        ),
-      });
-    }
-  }, [hasApiKeyError, trendingError?.message, navigate]);
-  useEffect(() => {
-    if (trending.length === 0) return;
-    const timer = setInterval(() => {
-      setHeroIndex((i) => (i + 1) % Math.min(trending.length, 8));
-    }, 6000);
-    return () => clearInterval(timer);
-  }, [trending.length]);
-
-  const hero = trending[heroIndex];
-
-
-
+  const handleLeave = () => {
+    clearTimeout(timerRef.current);
+    setHovered(false);
+    setShowCard(false);
+  };
 
   return (
-    <div className="space-y-8 pb-4">
-      {/* Header */}
-      <header className="sticky top-0 z-50 bg-background/80 backdrop-blur-lg border-b border-border/30">
-        <div className="px-6 py-4">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-4">
-              {/* App Icon */}
-              <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-primary to-primary/70 flex items-center justify-center">
-                <PlayCircle size={20} className="text-white" />
-              </div>
-              <h1 className="text-2xl font-bold font-display glow-text">Movie Tracker</h1>
-              <div className="hidden md:flex items-center gap-2 text-sm text-muted-foreground">
-                <Film size={16} />
-                <span>{collection.filter(c => c.type === 'movie').length} Movies</span>
-                <Tv size={16} />
-                <span>{collection.filter(c => c.type === 'series').length} Series</span>
-              </div>
-            </div>
-            
-            <div className="flex items-center gap-3">
-              {/* Search Bar */}
-              <div className="hidden md:flex items-center bg-gradient-to-r from-background via-secondary/30 to-background border border-border/50 rounded-xl px-4 py-2.5 w-80 shadow-lg hover:shadow-xl transition-all duration-300 group">
-                <Search size={18} className="text-primary mr-3 group-hover:scale-110 transition-transform" />
-                <Input
-                  placeholder="Search movies & series..."
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  className="bg-transparent border-0 text-sm placeholder:text-muted-foreground/70 focus:ring-0 font-medium"
-                />
-                {isSearching && (
-                  <div className="animate-spin w-4 h-4 border-2 border-primary border-t-transparent rounded-full" />
-                )}
-              </div>
-              
-              {/* Mobile Menu Toggle */}
-              <Button
-                variant="ghost"
-                size="sm"
-                className="md:hidden"
-                onClick={() => setShowMobileMenu(!showMobileMenu)}
-              >
-                <Menu size={20} />
-              </Button>
-            </div>
-          </div>
-          
-          {/* Mobile Search & Menu */}
-          {showMobileMenu && (
-            <div className="md:hidden mt-4 space-y-3">
-              <div className="flex items-center bg-gradient-to-r from-background via-secondary/30 to-background border border-border/50 rounded-xl px-4 py-2.5 shadow-lg hover:shadow-xl transition-all duration-300 group">
-                <Search size={18} className="text-primary mr-3 group-hover:scale-110 transition-transform" />
-                <Input
-                  placeholder="Search movies & series..."
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  className="bg-transparent border-0 text-sm placeholder:text-muted-foreground/70 focus:ring-0 font-medium"
-                />
-                {isSearching && (
-                  <div className="animate-spin w-4 h-4 border-2 border-primary border-t-transparent rounded-full" />
-                )}
-              </div>
-              <div className="flex items-center gap-4 text-sm text-muted-foreground">
-                <div className="flex items-center gap-2">
-                  <Film size={16} />
-                  <span>{collection.filter(c => c.type === 'movie').length} Movies</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <Tv size={16} />
-                  <span>{collection.filter(c => c.type === 'series').length} Series</span>
-                </div>
-              </div>
+    <>
+      <div
+        ref={cardRef}
+        className="relative flex-shrink-0 cursor-pointer transition-transform duration-200 hover:scale-105"
+        style={{ width: "160px" }}
+        onMouseEnter={handleEnter}
+        onMouseLeave={handleLeave}
+        onClick={onSelect}
+      >
+        <div className="relative aspect-[2/3] rounded-md overflow-hidden bg-secondary">
+          <img
+            src={img(item.poster)}
+            alt={item.title}
+            className="w-full h-full object-cover"
+            loading="lazy"
+          />
+          {progress && (
+            <div className="absolute bottom-0 left-0 right-0 h-1 bg-black/50">
+              <div className="h-full bg-primary" style={{ width: `${progress.progressPercent}%` }} />
             </div>
           )}
         </div>
-      </header>
+        <p className="mt-1 text-xs text-muted-foreground truncate">{item.title}</p>
+      </div>
 
-      {/* Search Results */}
-      {searchQuery.trim().length >= 2 && (searchResults.movies.length > 0 || searchResults.series.length > 0) && (
-        <div className="px-6 space-y-4 fade-up" style={{ animationDelay: "0.05s" }}>
-          <div className="glass-panel p-4">
-            <h2 className="text-lg font-semibold font-display mb-4 flex items-center gap-2">
-              <Search size={18} className="text-primary" />
-              Search Results for "{searchQuery}"
-            </h2>
-            
-            {/* Movies Results */}
-            {searchResults.movies.length > 0 && (
-              <div className="mb-6">
-                <h3 className="text-md font-medium mb-3 flex items-center gap-2">
-                  <Film size={16} className="text-primary" />
-                  Movies ({searchResults.movies.length})
-                </h3>
-                <div className="flex gap-3 overflow-x-auto scrollbar-hide pb-2">
-                  {searchResults.movies.slice(0, 10).map((movie) => (
-                    <div
-                      key={movie.id}
-                      className="flex-shrink-0 w-[120px] group cursor-pointer"
-                      onClick={() => navigate(`/movies?id=${movie.id}`)}
-                    >
-                      <img src={img(movie.poster_path, "w342")} alt={movie.title} className="w-full h-[180px] object-cover rounded-lg" loading="lazy" />
-                      <div className="mt-2">
-                        <p className="text-xs font-medium truncate">{movie.title}</p>
-                        <div className="flex items-center gap-1 mt-1">
-                          <span className="flex items-center gap-0.5 text-[10px] text-primary">
-                            <Star size={8} fill="currentColor" /> {movie.vote_average.toFixed(1)}
-                          </span>
-                          <span className="text-[10px] text-muted-foreground">{movie.release_date?.slice(0, 4)}</span>
-                        </div>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
+      {/* Hover expanded card */}
+      {showCard && (
+        <div
+          style={cardStyle}
+          className="rounded-xl overflow-hidden shadow-2xl border border-border/40 animate-in fade-in zoom-in-95 duration-150"
+          onMouseEnter={() => { clearTimeout(timerRef.current); setShowCard(true); }}
+          onMouseLeave={handleLeave}
+          onClick={onSelect}
+        >
+          <div className="relative aspect-video overflow-hidden bg-secondary">
+            <img
+              src={img(item.backdrop || item.poster, "w780")}
+              alt={item.title}
+              className="w-full h-full object-cover"
+            />
+            <div className="absolute inset-0 bg-gradient-to-t from-card via-card/20 to-transparent" />
+            <div className="absolute bottom-2 left-3 right-3">
+              <p className="font-bold text-sm line-clamp-1">{item.title}</p>
+            </div>
+          </div>
+
+          <div className="p-3 space-y-2" style={{ background: "hsl(var(--card))" }}>
+            <div className="flex items-center gap-2">
+              <button
+                onClick={(e) => { e.stopPropagation(); onSelect(); }}
+                className="w-8 h-8 rounded-full flex items-center justify-center font-bold text-sm transition-colors"
+                style={{ background: "hsl(var(--foreground))", color: "hsl(var(--background))" }}
+              >
+                <Play size={13} fill="currentColor" />
+              </button>
+              <button
+                onClick={(e) => e.stopPropagation()}
+                className="w-8 h-8 rounded-full border border-border flex items-center justify-center hover:border-foreground/50 transition-colors"
+              >
+                <Plus size={13} />
+              </button>
+              <button
+                onClick={(e) => { e.stopPropagation(); onSelect(); }}
+                className="w-8 h-8 rounded-full border border-border flex items-center justify-center hover:border-foreground/50 transition-colors ml-auto"
+              >
+                <ChevronRight size={13} />
+              </button>
+            </div>
+
+            <div className="flex items-center gap-2 text-xs">
+              <span className="font-bold" style={{ color: "hsl(142 70% 45%)" }}>{matchScore}% Match</span>
+              <span className="text-muted-foreground">{item.year}</span>
+              <span className="border border-muted-foreground/30 px-1 rounded text-muted-foreground text-[10px]">
+                {type === "series" ? "Series" : "Movie"}
+              </span>
+            </div>
+
+            {genres.length > 0 && (
+              <p className="text-[11px] text-muted-foreground">{genres.join(" • ")}</p>
             )}
-            
-            {/* Series Results */}
-            {searchResults.series.length > 0 && (
-              <div>
-                <h3 className="text-md font-medium mb-3 flex items-center gap-2">
-                  <Tv size={16} className="text-primary" />
-                  Series ({searchResults.series.length})
-                </h3>
-                <div className="flex gap-3 overflow-x-auto scrollbar-hide pb-2">
-                  {searchResults.series.slice(0, 10).map((series) => (
-                    <div
-                      key={series.id}
-                      className="flex-shrink-0 w-[120px] group cursor-pointer"
-                      onClick={() => navigate(`/series?id=${series.id}`)}
-                    >
-                      <img src={img(series.poster_path, "w342")} alt={series.name} className="w-full h-[180px] object-cover rounded-lg" loading="lazy" />
-                      <div className="mt-2">
-                        <p className="text-xs font-medium truncate">{series.name}</p>
-                        <div className="flex items-center gap-1 mt-1">
-                          <span className="flex items-center gap-0.5 text-[10px] text-primary">
-                            <Star size={8} fill="currentColor" /> {series.vote_average.toFixed(1)}
-                          </span>
-                          <span className="text-[10px] text-muted-foreground">{series.first_air_date?.slice(0, 4)}</span>
-                        </div>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
+
+            {item.overview && (
+              <p className="text-[11px] text-muted-foreground line-clamp-2">{item.overview}</p>
             )}
           </div>
         </div>
       )}
+    </>
+  );
+};
 
-      {/* Hero Banner with auto-cycling */}
-      <section className="relative h-[460px] overflow-hidden mx-4 rounded-2xl">
-        {hero ? (
-          <>
-            <img
-              key={hero.id}
-              src={imgOriginal(hero.backdrop_path)}
-              alt={hero.title}
-              className="absolute inset-0 w-full h-full object-cover animate-fade-in"
-            />
-            <div className="absolute inset-0 bg-gradient-to-t from-background via-background/50 to-background/30" />
-            <div className="absolute inset-0 bg-gradient-to-r from-background/80 via-transparent to-transparent" />
-          </>
-        ) : (
-          <div className="absolute inset-0 bg-secondary/30 animate-pulse rounded-2xl" />
-        )}
+// ─── No API Key prompt ────────────────────────────────────────────────────────
+const NoApiKeyBanner = ({ onGoSettings }: { onGoSettings: () => void }) => (
+  <div className="min-h-screen flex flex-col items-center justify-center gap-6 px-4">
+    <div className="text-center space-y-4 max-w-md">
+      <div className="w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center mx-auto">
+        <AlertCircle size={32} className="text-primary" />
+      </div>
+      <h1 className="text-3xl font-bold">Welcome to Movie Tracker</h1>
+      <p className="text-muted-foreground">
+        To get started, you need to add your TMDB API key in Settings. It's free and only takes a minute!
+      </p>
+      <Button onClick={onGoSettings} size="lg" className="gap-2">
+        Go to Settings
+      </Button>
+      <p className="text-xs text-muted-foreground">
+        Get your free API key at{" "}
+        <a href="https://www.themoviedb.org/settings/api" target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">
+          themoviedb.org
+        </a>
+      </p>
+    </div>
+  </div>
+);
 
-        {/* Hero indicators */}
-        {trending.length > 1 && (
-          <div className="absolute top-4 right-4 z-20 flex gap-1.5">
-            {trending.slice(0, 8).map((_, i) => (
-              <button
-                key={i}
-                onClick={() => setHeroIndex(i)}
-                className={`h-1 rounded-full transition-all ${i === heroIndex ? "w-6 bg-primary" : "w-2 bg-white/30"}`}
-              />
+// ─── Hero Banner ──────────────────────────────────────────────────────────────
+const HeroBanner = ({
+  movie,
+  trailerKey,
+  onPlay,
+  onMoreInfo,
+}: {
+  movie: TmdbMovie;
+  trailerKey?: string;
+  onPlay: () => void;
+  onMoreInfo: () => void;
+}) => {
+  const [muted, setMuted] = useState(true);
+  const [showVideo, setShowVideo] = useState(false);
+
+  useEffect(() => {
+    const timer = setTimeout(() => setShowVideo(!!trailerKey), 2000);
+    return () => clearTimeout(timer);
+  }, [trailerKey]);
+
+  const genres = (movie.genre_ids || []).map(id => GENRE_MAP[id]).filter(Boolean).slice(0, 3);
+
+  return (
+    <div className="relative w-full h-[75vh] min-h-[500px] overflow-hidden">
+      {/* Background */}
+      {showVideo && trailerKey ? (
+        <iframe
+          src={`https://www.youtube.com/embed/${trailerKey}?autoplay=1&mute=${muted ? 1 : 0}&controls=0&loop=1&playlist=${trailerKey}&modestbranding=1&iv_load_policy=3`}
+          className="absolute inset-0 w-full h-full scale-150 pointer-events-none"
+          allow="autoplay"
+          title="Hero trailer"
+        />
+      ) : (
+        <img
+          src={imgOriginal(movie.backdrop_path)}
+          alt={movie.title}
+          className="absolute inset-0 w-full h-full object-cover"
+        />
+      )}
+
+      {/* Gradients */}
+      <div className="absolute inset-0 bg-gradient-to-r from-background via-background/60 to-transparent" />
+      <div className="absolute inset-0 bg-gradient-to-t from-background via-transparent to-transparent" />
+
+      {/* Content */}
+      <div className="absolute bottom-20 left-0 right-0 px-8 md:px-16 max-w-2xl">
+        <div className="space-y-4 fade-up">
+          <div className="flex items-center gap-2">
+            {genres.map(g => (
+              <Badge key={g} variant="outline" className="border-border/60 text-xs text-muted-foreground">{g}</Badge>
             ))}
           </div>
+          <h1 className="text-4xl md:text-6xl font-black leading-none tracking-tight">{movie.title}</h1>
+          <div className="flex items-center gap-3 text-sm text-muted-foreground">
+            <span className="flex items-center gap-1">
+              <Star size={13} fill="hsl(var(--primary))" className="text-primary" />
+              {movie.vote_average.toFixed(1)}
+            </span>
+            <span>{movie.release_date?.slice(0, 4)}</span>
+          </div>
+          <p className="text-sm md:text-base text-muted-foreground line-clamp-3 max-w-lg">{movie.overview}</p>
+          <div className="flex items-center gap-3 pt-2">
+            <Button onClick={onPlay} size="lg" className="gap-2 px-8 font-bold">
+              <Play size={18} fill="currentColor" /> Play
+            </Button>
+            <Button onClick={onMoreInfo} variant="secondary" size="lg" className="gap-2 px-6">
+              <Info size={18} /> More Info
+            </Button>
+          </div>
+        </div>
+      </div>
+
+      {/* Mute toggle */}
+      {trailerKey && (
+        <button
+          onClick={() => setMuted(!muted)}
+          className="absolute bottom-24 right-8 w-10 h-10 rounded-full border border-border/60 flex items-center justify-center hover:bg-secondary/50 transition-colors"
+        >
+          {muted ? <VolumeX size={16} /> : <Volume2 size={16} />}
+        </button>
+      )}
+    </div>
+  );
+};
+
+// ─── Main HomePage ─────────────────────────────────────────────────────────────
+const HomePage = () => {
+  const navigate = useNavigate();
+  const [selectedItem, setSelectedItem] = useState<{ id: number; type: "movie" | "series" } | null>(null);
+  const [heroIndex, setHeroIndex] = useState(0);
+  const hasKey = hasTmdbKey();
+
+  const { data: trendingMovies = [], isLoading: loadingTrending } = useQuery({
+    queryKey: ["trending-movies"],
+    queryFn: () => tmdbApi.trending(),
+    enabled: hasKey,
+    staleTime: 1000 * 60 * 5,
+  });
+
+  const { data: trendingSeries = [] } = useQuery({
+    queryKey: ["trending-series"],
+    queryFn: () => tmdbSeriesApi.trending(),
+    enabled: hasKey,
+    staleTime: 1000 * 60 * 5,
+  });
+
+  const { data: topRatedMovies = [] } = useQuery({
+    queryKey: ["top-rated-movies"],
+    queryFn: () => tmdbApi.topRated(),
+    enabled: hasKey,
+    staleTime: 1000 * 60 * 10,
+  });
+
+  const { data: topRatedSeries = [] } = useQuery({
+    queryKey: ["top-rated-series"],
+    queryFn: () => tmdbSeriesApi.topRated(),
+    enabled: hasKey,
+    staleTime: 1000 * 60 * 10,
+  });
+
+  const { data: nowPlayingMovies = [] } = useQuery({
+    queryKey: ["now-playing"],
+    queryFn: () => tmdbApi.nowPlaying(),
+    enabled: hasKey,
+    staleTime: 1000 * 60 * 10,
+  });
+
+  const { data: popularSeries = [] } = useQuery({
+    queryKey: ["popular-series"],
+    queryFn: () => tmdbSeriesApi.popular(),
+    enabled: hasKey,
+    staleTime: 1000 * 60 * 10,
+  });
+
+  // Hero trailer
+  const heroMovie = trendingMovies[heroIndex];
+  const { data: heroVideos = [] } = useQuery({
+    queryKey: ["hero-videos", heroMovie?.id],
+    queryFn: () => tmdbApi.videos(heroMovie.id),
+    enabled: !!heroMovie,
+    staleTime: 1000 * 60 * 30,
+  });
+
+  const trailerKey = heroVideos.find(v => v.site === "YouTube" && v.type === "Trailer")?.key
+    || heroVideos.find(v => v.site === "YouTube")?.key;
+
+  // Auto-rotate hero
+  useEffect(() => {
+    if (trendingMovies.length === 0) return;
+    const t = setInterval(() => {
+      setHeroIndex(i => (i + 1) % Math.min(trendingMovies.length, 5));
+    }, 15000);
+    return () => clearInterval(t);
+  }, [trendingMovies.length]);
+
+  // Continue watching
+  const continueWatching = getWatchProgress();
+  const collection = getCollection();
+
+  const mapMovies = (items: TmdbMovie[]) => items.map(m => ({
+    id: m.id,
+    title: m.title,
+    poster: m.poster_path,
+    backdrop: m.backdrop_path,
+    year: m.release_date?.slice(0, 4) || "",
+    rating: m.vote_average,
+    overview: m.overview,
+    genre_ids: m.genre_ids,
+  }));
+
+  const mapSeries = (items: TmdbSeries[]) => items.map(s => ({
+    id: s.id,
+    title: s.name,
+    poster: s.poster_path,
+    backdrop: s.backdrop_path,
+    year: s.first_air_date?.slice(0, 4) || "",
+    rating: s.vote_average,
+    overview: s.overview,
+    genre_ids: s.genre_ids,
+  }));
+
+  const handleSelectItem = (id: number, type: "movie" | "series") => {
+    setSelectedItem({ id, type });
+  };
+
+  if (!hasKey) {
+    return <NoApiKeyBanner onGoSettings={() => navigate("/settings")} />;
+  }
+
+  if (selectedItem) {
+    if (selectedItem.type === "movie") {
+      return (
+        <MovieDetailView
+          movieId={selectedItem.id}
+          onBack={() => setSelectedItem(null)}
+          onSelectMovie={(id) => setSelectedItem({ id, type: "movie" })}
+        />
+      );
+    }
+    return (
+      <SeriesDetailView
+        seriesId={selectedItem.id}
+        onBack={() => setSelectedItem(null)}
+        onSelectSeries={(id) => setSelectedItem({ id, type: "series" })}
+      />
+    );
+  }
+
+  return (
+    <div className="relative">
+      {/* Hero Banner */}
+      {loadingTrending ? (
+        <Skeleton className="w-full h-[75vh]" />
+      ) : heroMovie ? (
+        <HeroBanner
+          movie={heroMovie}
+          trailerKey={trailerKey}
+          onPlay={() => handleSelectItem(heroMovie.id, "movie")}
+          onMoreInfo={() => handleSelectItem(heroMovie.id, "movie")}
+        />
+      ) : null}
+
+      {/* Hero dot navigation */}
+      {trendingMovies.length > 0 && (
+        <div className="flex justify-center gap-2 py-3 -mt-6 relative z-10">
+          {trendingMovies.slice(0, 5).map((_, i) => (
+            <button
+              key={i}
+              onClick={() => setHeroIndex(i)}
+              className={`w-2 h-2 rounded-full transition-all ${i === heroIndex ? "bg-primary w-4" : "bg-muted-foreground/40"}`}
+            />
+          ))}
+        </div>
+      )}
+
+      {/* Rows */}
+      <div className="pt-4">
+        {/* Continue Watching */}
+        {continueWatching.length > 0 && (
+          <ContentRow
+            title="Continue Watching"
+            badge="In Progress"
+            items={continueWatching.map(p => ({
+              id: p.id,
+              title: p.title,
+              poster: p.poster,
+              backdrop: null,
+              year: "",
+              rating: 0,
+            }))}
+            type="movie"
+            onSelectItem={(id) => {
+              const item = continueWatching.find(p => p.id === id);
+              handleSelectItem(id, item?.type || "movie");
+            }}
+          />
         )}
 
-        <div className="relative z-10 flex flex-col justify-end h-full px-6 pb-8">
-          {hasApiKeyError ? (
-            <div className="glass-panel p-6 max-w-md fade-up">
-              <div className="flex items-start gap-3">
-                <AlertCircle size={20} className="text-amber-400 flex-shrink-0 mt-1" />
-                <div>
-                  <h3 className="font-semibold text-lg mb-2">API Keys Required</h3>
-                  <p className="text-sm text-muted-foreground mb-4">
-                    To browse movies and series, please configure your TMDB and OMDB API keys in Settings.
-                  </p>
-                  <div className="flex gap-2">
-                    <Button
-                      size="sm"
-                      onClick={() => navigate('/settings')}
-                      className="bg-primary text-primary-foreground hover:bg-primary/90"
-                    >
-                      Configure Keys
-                    </Button>
-                    <Button size="sm" variant="outline" className="border-border/50 hover:bg-secondary/50">
-                      <ExternalLink size={14} className="mr-1" /> Get API Keys
-                    </Button>
-                  </div>
-                </div>
-              </div>
-            </div>
-          ) : hero ? (
-            <>
-              <span className="text-xs font-medium text-primary tracking-wider uppercase mb-2 fade-up">
-                🔥 Trending This Week
-              </span>
-              <h1 className="text-3xl font-bold font-display tracking-tight fade-up">
-                {hero.title}
-              </h1>
-              <div className="flex items-center gap-3 mt-2 text-sm text-muted-foreground fade-up" style={{ animationDelay: "0.05s" }}>
-                <span className="flex items-center gap-1 text-primary">
-                  <Star size={14} fill="currentColor" /> {hero.vote_average.toFixed(1)}
-                </span>
-                <span>{hero.release_date?.slice(0, 4)}</span>
-              </div>
-              <p className="text-sm text-muted-foreground mt-2 max-w-lg line-clamp-2 fade-up" style={{ animationDelay: "0.1s" }}>
-                {hero.overview}
-              </p>
-              <div className="flex gap-3 mt-4 fade-up" style={{ animationDelay: "0.15s" }}>
-                <Button
-                  size="sm"
-                  className="bg-primary text-primary-foreground hover:bg-primary/90 gap-2"
-                  onClick={() => navigate(`/movies?id=${hero.id}`)}
-                >
-                  <Sparkles size={14} /> View Details
-                </Button>
-                <Button size="sm" variant="outline" className="border-border/50 hover:bg-secondary/50 gap-2">
-                  <Plus size={14} /> Add to Collection
-                </Button>
-              </div>
-            </>
-          ) : (
-            <>
-              <h1 className="text-4xl font-bold font-display tracking-tight fade-up">
-                Movie <span className="glow-text">Tracker</span>
-              </h1>
-              <p className="text-muted-foreground mt-2 max-w-md fade-up" style={{ animationDelay: "0.1s" }}>
-                Your personal cinema vault. Track every movie and series you watch.
-              </p>
-            </>
-          )}
-        </div>
-      </section>
+        {/* Trending Now Movies */}
+        <ContentRow
+          title="Trending Now"
+          badge="This Week"
+          items={mapMovies(trendingMovies)}
+          type="movie"
+          onSelectItem={handleSelectItem}
+        />
 
-      {/* Content Rows */}
-      <ContentRow title="Trending Now" icon={TrendingUp} items={mapMovies(trending)} autoScroll />
-      <ContentRow title="Now Playing" icon={Play} items={mapMovies(nowPlaying)} />
-      <ContentRow title="Top Rated" icon={Star} items={mapMovies(topRated)} />
-      <ContentRow title="Popular Movies" icon={Film} items={mapMovies(popular)} />
-      <ContentRow title="Trending Series" icon={Tv} items={mapSeries(trendingSeries)} type="series" autoScroll />
-      <ContentRow title="Popular Series" icon={Tv} items={mapSeries(popularSeries)} type="series" />
+        {/* Trending Series */}
+        <ContentRow
+          title="Trending Series"
+          items={mapSeries(trendingSeries)}
+          type="series"
+          onSelectItem={handleSelectItem}
+        />
+
+        {/* Top Rated Movies */}
+        <ContentRow
+          title="Top Rated Movies"
+          items={mapMovies(topRatedMovies)}
+          type="movie"
+          onSelectItem={handleSelectItem}
+        />
+
+        {/* Now Playing */}
+        <ContentRow
+          title="Now Playing in Theaters"
+          items={mapMovies(nowPlayingMovies)}
+          type="movie"
+          onSelectItem={handleSelectItem}
+        />
+
+        {/* Popular Series */}
+        <ContentRow
+          title="Popular Series"
+          items={mapSeries(popularSeries)}
+          type="series"
+          onSelectItem={handleSelectItem}
+        />
+
+        {/* Top Rated Series */}
+        <ContentRow
+          title="Top Rated Series"
+          items={mapSeries(topRatedSeries)}
+          type="series"
+          onSelectItem={handleSelectItem}
+        />
+
+        {/* From Your Collection */}
+        {collection.length > 0 && (
+          <ContentRow
+            title="From Your Collection"
+            badge="Vault"
+            items={collection.slice(0, 20).map(item => ({
+              id: item.id,
+              title: item.title,
+              poster: item.poster,
+              backdrop: null,
+              year: item.year,
+              rating: parseFloat(item.imdb) || 0,
+            }))}
+            type="movie"
+            onSelectItem={(id) => {
+              const item = collection.find(c => c.id === id);
+              handleSelectItem(id, item?.type || "movie");
+            }}
+          />
+        )}
+      </div>
+
     </div>
   );
 };

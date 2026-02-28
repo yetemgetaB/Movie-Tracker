@@ -1,389 +1,210 @@
 import React, { useState, useMemo } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Clock, Plus, Trash2, Star, Calendar, Filter, Search, Film, Tv, Edit2, Check, X, FolderPlus, Share2, GripVertical } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { 
-  Eye, Plus, Trash2, Play, Clock, Star, Calendar, 
-  Filter, Search, SortAsc, Film, Tv, AlertCircle
-} from 'lucide-react';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { img } from '@/lib/tmdb';
-import WatchlistManager, { WatchlistItem } from '@/lib/watchlist';
+import WatchlistManager, { type WatchlistItem, type CustomList } from '@/lib/watchlist';
 import { toast } from '@/hooks/use-toast';
+import MovieDetailView from '@/components/MovieDetailView';
+import SeriesDetailView from '@/components/SeriesDetailView';
+
+const PRIORITY_CONFIG = {
+  high: { label: "High", color: "bg-red-500/20 text-red-400 border-red-500/30" },
+  medium: { label: "Medium", color: "bg-yellow-500/20 text-yellow-400 border-yellow-500/30" },
+  low: { label: "Low", color: "bg-green-500/20 text-green-400 border-green-500/30" },
+};
 
 const WatchlistPage = () => {
-  const navigate = useNavigate();
-  const [searchTerm, setSearchTerm] = useState('');
-  const [filterType, setFilterType] = useState<'all' | 'movie' | 'series'>('all');
-  const [filterPriority, setFilterPriority] = useState<'all' | 'high' | 'medium' | 'low'>('all');
-  const [sortBy, setSortBy] = useState<'date' | 'title' | 'priority' | 'year'>('date');
+  const manager = WatchlistManager.getInstance();
+  const [lists, setLists] = useState<CustomList[]>(() => manager.getCustomLists());
+  const [watchlist, setWatchlist] = useState<WatchlistItem[]>(() => manager.getWatchlist());
+  const [activeListId, setActiveListId] = useState("default");
+  const [search, setSearch] = useState("");
+  const [filterType, setFilterType] = useState<"all" | "movie" | "series">("all");
+  const [filterPriority, setFilterPriority] = useState<"all" | "high" | "medium" | "low">("all");
   const [editingNotes, setEditingNotes] = useState<number | null>(null);
-  const [notesText, setNotesText] = useState('');
+  const [notesText, setNotesText] = useState("");
+  const [showNewList, setShowNewList] = useState(false);
+  const [newListName, setNewListName] = useState("");
+  const [selectedItem, setSelectedItem] = useState<{ id: number; type: "movie" | "series" } | null>(null);
+  const [viewMode, setViewMode] = useState<"card" | "list">("card");
 
-  const watchlistManager = WatchlistManager.getInstance();
-  const watchlist = watchlistManager.getWatchlist();
+  const reload = () => { setLists(manager.getCustomLists()); setWatchlist(manager.getWatchlist()); };
 
-  const filteredAndSortedWatchlist = useMemo(() => {
-    let filtered = watchlist.filter(item => {
-      const matchesSearch = item.title.toLowerCase().includes(searchTerm.toLowerCase());
-      const matchesType = filterType === 'all' || item.type === filterType;
-      const matchesPriority = filterPriority === 'all' || item.priority === filterPriority;
-      
-      return matchesSearch && matchesType && matchesPriority;
-    });
+  const activeItems = useMemo(() => watchlist.filter(i => i.listId === activeListId || (!i.listId && activeListId === "default")), [watchlist, activeListId]);
 
-    // Sort
-    filtered.sort((a, b) => {
-      switch (sortBy) {
-        case 'date':
-          return new Date(b.addedDate).getTime() - new Date(a.addedDate).getTime();
-        case 'title':
-          return a.title.localeCompare(b.title);
-        case 'priority':
-          const priorityOrder = { high: 3, medium: 2, low: 1 };
-          return priorityOrder[b.priority] - priorityOrder[a.priority];
-        case 'year':
-          return (parseInt(b.year) || 0) - (parseInt(a.year) || 0);
-        default:
-          return 0;
-      }
-    });
+  const filtered = useMemo(() => activeItems.filter(i => {
+    const matchSearch = i.title.toLowerCase().includes(search.toLowerCase());
+    const matchType = filterType === "all" || i.type === filterType;
+    const matchPriority = filterPriority === "all" || i.priority === filterPriority;
+    return matchSearch && matchType && matchPriority;
+  }).sort((a, b) => {
+    const pOrder = { high: 0, medium: 1, low: 2 };
+    return pOrder[a.priority] - pOrder[b.priority];
+  }), [activeItems, search, filterType, filterPriority]);
 
-    return filtered;
-  }, [watchlist, searchTerm, filterType, filterPriority, sortBy]);
-
-  const stats = watchlistManager.getWatchlistStats();
-
-  const handleMoveToCollection = (itemId: number) => {
-    watchlistManager.moveToCollection(itemId);
-    toast({
-      title: 'Moved to Collection',
-      description: 'Item has been moved to your main collection.',
-    });
+  const handleRemove = (item: WatchlistItem) => {
+    manager.removeFromWatchlist(item.id, item.listId);
+    reload();
+    toast({ title: `${item.title} removed` });
   };
 
-  const handleRemoveFromWatchlist = (itemId: number) => {
-    watchlistManager.removeFromWatchlist(itemId);
-    toast({
-      title: 'Removed from Watchlist',
-      description: 'Item has been removed from your watchlist.',
-    });
-  };
-
-  const handleUpdatePriority = (itemId: number, priority: 'low' | 'medium' | 'high') => {
-    watchlistManager.updatePriority(itemId, priority);
-    toast({
-      title: 'Priority Updated',
-      description: `Priority set to ${priority}.`,
-    });
-  };
-
-  const handleUpdateNotes = (itemId: number) => {
-    watchlistManager.updateNotes(itemId, notesText);
+  const saveNotes = (item: WatchlistItem) => {
+    manager.updateNotes(item.id, notesText);
+    reload();
     setEditingNotes(null);
-    setNotesText('');
-    toast({
-      title: 'Notes Updated',
-      description: 'Your notes have been saved.',
-    });
   };
 
-  const startEditingNotes = (item: WatchlistItem) => {
-    setEditingNotes(item.id);
-    setNotesText(item.notes || '');
+  const createList = () => {
+    if (!newListName.trim()) return;
+    manager.createList(newListName.trim());
+    reload();
+    setNewListName("");
+    setShowNewList(false);
+    toast({ title: `List "${newListName}" created!` });
   };
 
-  const getPriorityColor = (priority: string) => {
-    switch (priority) {
-      case 'high': return 'bg-red-500';
-      case 'medium': return 'bg-yellow-500';
-      case 'low': return 'bg-green-500';
-      default: return 'bg-gray-500';
-    }
+  const shareList = () => {
+    const titles = filtered.map(i => `${i.title} (${i.year})`).join("\n");
+    navigator.clipboard.writeText(titles).then(() => toast({ title: "List copied to clipboard!" }));
   };
 
-  const getPriorityVariant = (priority: string) => {
-    switch (priority) {
-      case 'high': return 'destructive';
-      case 'medium': return 'default';
-      case 'low': return 'secondary';
-      default: return 'outline';
-    }
-  };
+  if (selectedItem) {
+    if (selectedItem.type === "movie") return <MovieDetailView movieId={selectedItem.id} onBack={() => setSelectedItem(null)} onSelectMovie={(id) => setSelectedItem({ id, type: "movie" })} />;
+    return <SeriesDetailView seriesId={selectedItem.id} onBack={() => setSelectedItem(null)} onSelectSeries={(id) => setSelectedItem({ id, type: "series" })} />;
+  }
 
   return (
-    <div className="px-6 pt-6 pb-8 space-y-6">
-      {/* Header */}
-      <div className="fade-up">
-        <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-2xl font-bold font-display flex items-center gap-2">
-              <Clock className="text-primary" />
-              Watchlist
-            </h1>
-            <p className="text-sm text-muted-foreground mt-1">
-              Movies and series you want to watch later
-            </p>
-          </div>
-          <Button variant="outline" onClick={() => navigate('/movies')}>
-            Browse Movies
-          </Button>
+    <div className="px-4 pt-6 space-y-5 pb-4">
+      <div className="flex items-start justify-between px-2">
+        <div>
+          <h1 className="text-2xl font-bold flex items-center gap-2"><Clock size={22} className="text-primary" /> Watchlist</h1>
+          <p className="text-xs text-muted-foreground mt-0.5">{watchlist.length} titles across {lists.length} list{lists.length !== 1 ? "s" : ""}</p>
         </div>
+        <Button size="sm" variant="outline" onClick={() => setShowNewList(true)} className="gap-1.5">
+          <FolderPlus size={14} /> New List
+        </Button>
       </div>
 
-      {/* Stats */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4 fade-up" style={{ animationDelay: '0.1s' }}>
-        <Card className="glass-panel">
-          <CardContent className="p-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium text-muted-foreground">Total Items</p>
-                <p className="text-2xl font-bold">{stats.total}</p>
-              </div>
-              <Clock className="h-8 w-8 text-primary opacity-20" />
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card className="glass-panel">
-          <CardContent className="p-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium text-muted-foreground">High Priority</p>
-                <p className="text-2xl font-bold text-red-500">{stats.byPriority.high}</p>
-              </div>
-              <AlertCircle className="h-8 w-8 text-red-500 opacity-20" />
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card className="glass-panel">
-          <CardContent className="p-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium text-muted-foreground">Movies</p>
-                <p className="text-2xl font-bold">{stats.byType.movies}</p>
-              </div>
-              <Film className="h-8 w-8 text-blue-500 opacity-20" />
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card className="glass-panel">
-          <CardContent className="p-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium text-muted-foreground">Series</p>
-                <p className="text-2xl font-bold">{stats.byType.series}</p>
-              </div>
-              <Tv className="h-8 w-8 text-green-500 opacity-20" />
-            </div>
-          </CardContent>
-        </Card>
+      {/* Lists Tabs */}
+      <div className="flex gap-2 overflow-x-auto scrollbar-hide px-2">
+        {lists.map(l => (
+          <button
+            key={l.id}
+            onClick={() => setActiveListId(l.id)}
+            className={`flex-shrink-0 px-3 py-1.5 rounded-full text-xs font-medium transition-colors ${activeListId === l.id ? "bg-primary text-primary-foreground" : "bg-secondary text-muted-foreground hover:bg-secondary/80"}`}
+          >
+            {l.name}
+            <span className="ml-1 opacity-60">({watchlist.filter(i => (i.listId || "default") === l.id).length})</span>
+          </button>
+        ))}
       </div>
 
       {/* Filters */}
-      <Card className="glass-panel fade-up" style={{ animationDelay: '0.2s' }}>
-        <CardContent className="p-4">
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-            <div className="relative">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-              <Input
-                placeholder="Search watchlist..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="pl-10"
-              />
-            </div>
-
-            <Select value={filterType} onValueChange={(value: any) => setFilterType(value)}>
-              <SelectTrigger>
-                <SelectValue placeholder="Filter by type" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All Types</SelectItem>
-                <SelectItem value="movie">Movies</SelectItem>
-                <SelectItem value="series">Series</SelectItem>
-              </SelectContent>
-            </Select>
-
-            <Select value={filterPriority} onValueChange={(value: any) => setFilterPriority(value)}>
-              <SelectTrigger>
-                <SelectValue placeholder="Filter by priority" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All Priorities</SelectItem>
-                <SelectItem value="high">High Priority</SelectItem>
-                <SelectItem value="medium">Medium Priority</SelectItem>
-                <SelectItem value="low">Low Priority</SelectItem>
-              </SelectContent>
-            </Select>
-
-            <Select value={sortBy} onValueChange={(value: any) => setSortBy(value)}>
-              <SelectTrigger>
-                <SelectValue placeholder="Sort by" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="date">Date Added</SelectItem>
-                <SelectItem value="title">Title</SelectItem>
-                <SelectItem value="priority">Priority</SelectItem>
-                <SelectItem value="year">Year</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* Watchlist Items */}
-      <div className="space-y-4 fade-up" style={{ animationDelay: '0.3s' }}>
-        {filteredAndSortedWatchlist.length === 0 ? (
-          <Card className="glass-panel">
-            <CardContent className="p-8 text-center">
-              <Clock className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-              <h3 className="text-lg font-medium mb-2">Your watchlist is empty</h3>
-              <p className="text-muted-foreground mb-4">
-                Start adding movies and series you want to watch later.
-              </p>
-              <Button onClick={() => navigate('/movies')}>
-                <Plus className="h-4 w-4 mr-2" />
-                Browse Movies
-              </Button>
-            </CardContent>
-          </Card>
-        ) : (
-          filteredAndSortedWatchlist.map((item) => (
-            <Card key={item.id} className="glass-panel hover:shadow-lg transition-all duration-300">
-              <CardContent className="p-4">
-                <div className="flex gap-4">
-                  {/* Poster */}
-                  <div className="flex-shrink-0">
-                    {item.poster ? (
-                      <img
-                        src={img(item.poster)}
-                        alt={item.title}
-                        className="w-20 h-28 object-cover rounded-lg"
-                      />
-                    ) : (
-                      <div className="w-20 h-28 bg-muted rounded-lg flex items-center justify-center">
-                        <Film className="h-8 w-8 text-muted-foreground" />
-                      </div>
-                    )}
-                  </div>
-
-                  {/* Content */}
-                  <div className="flex-1 space-y-2">
-                    <div className="flex items-start justify-between">
-                      <div>
-                        <h3 className="font-semibold text-lg">{item.title}</h3>
-                        <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                          <span className="capitalize">{item.type}</span>
-                          {item.year && <span>• {item.year}</span>}
-                          {item.imdb && (
-                            <span className="flex items-center gap-1">
-                              <Star className="h-3 w-3 fill-yellow-400 text-yellow-400" />
-                              {item.imdb}
-                            </span>
-                          )}
-                        </div>
-                      </div>
-                      
-                      <div className="flex items-center gap-2">
-                        <Badge variant={getPriorityVariant(item.priority)}>
-                          {item.priority}
-                        </Badge>
-                      </div>
-                    </div>
-
-                    {/* Notes */}
-                    <div>
-                      {editingNotes === item.id ? (
-                        <div className="space-y-2">
-                          <Textarea
-                            value={notesText}
-                            onChange={(e) => setNotesText(e.target.value)}
-                            placeholder="Add your notes..."
-                            className="min-h-[60px]"
-                          />
-                          <div className="flex gap-2">
-                            <Button size="sm" onClick={() => handleUpdateNotes(item.id)}>
-                              Save
-                            </Button>
-                            <Button size="sm" variant="outline" onClick={() => setEditingNotes(null)}>
-                              Cancel
-                            </Button>
-                          </div>
-                        </div>
-                      ) : (
-                        <div>
-                          {item.notes ? (
-                            <p className="text-sm text-muted-foreground bg-secondary/50 p-2 rounded">
-                              {item.notes}
-                            </p>
-                          ) : (
-                            <p className="text-sm text-muted-foreground italic">No notes</p>
-                          )}
-                          <Button
-                            size="sm"
-                            variant="ghost"
-                            onClick={() => startEditingNotes(item)}
-                            className="mt-1 text-xs"
-                          >
-                            {item.notes ? 'Edit' : 'Add'} Notes
-                          </Button>
-                        </div>
-                      )}
-                    </div>
-
-                    {/* Actions */}
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                        <Calendar className="h-3 w-3" />
-                        Added {new Date(item.addedDate).toLocaleDateString()}
-                      </div>
-
-                      <div className="flex items-center gap-2">
-                        <Select
-                          value={item.priority}
-                          onValueChange={(value: any) => handleUpdatePriority(item.id, value)}
-                        >
-                          <SelectTrigger className="w-24 h-8">
-                            <SelectValue />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="high">High</SelectItem>
-                            <SelectItem value="medium">Medium</SelectItem>
-                            <SelectItem value="low">Low</SelectItem>
-                          </SelectContent>
-                        </Select>
-
-                        <Button
-                          size="sm"
-                          onClick={() => handleMoveToCollection(item.id)}
-                          className="bg-green-600 hover:bg-green-700"
-                        >
-                          <Play className="h-4 w-4 mr-1" />
-                          Watch
-                        </Button>
-
-                        <Button
-                          size="sm"
-                          variant="destructive"
-                          onClick={() => handleRemoveFromWatchlist(item.id)}
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          ))
-        )}
+      <div className="flex gap-2 flex-wrap px-2">
+        <div className="relative flex-1 min-w-[140px]">
+          <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
+          <Input placeholder="Search..." value={search} onChange={e => setSearch(e.target.value)} className="pl-8 h-9 bg-secondary/50 border-border/50 text-sm" />
+        </div>
+        <Select value={filterType} onValueChange={v => setFilterType(v as any)}>
+          <SelectTrigger className="w-28 h-9 bg-secondary/50 border-border/50 text-xs"><SelectValue /></SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">All Types</SelectItem>
+            <SelectItem value="movie">Movies</SelectItem>
+            <SelectItem value="series">Series</SelectItem>
+          </SelectContent>
+        </Select>
+        <Select value={filterPriority} onValueChange={v => setFilterPriority(v as any)}>
+          <SelectTrigger className="w-28 h-9 bg-secondary/50 border-border/50 text-xs"><SelectValue /></SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">All Priority</SelectItem>
+            <SelectItem value="high">🔴 High</SelectItem>
+            <SelectItem value="medium">🟡 Medium</SelectItem>
+            <SelectItem value="low">🟢 Low</SelectItem>
+          </SelectContent>
+        </Select>
+        <Button size="sm" variant="ghost" onClick={shareList} className="h-9 gap-1.5">
+          <Share2 size={13} /> Share
+        </Button>
       </div>
+
+      {/* Items */}
+      {filtered.length === 0 ? (
+        <div className="glass-panel p-10 text-center mx-2">
+          <Clock size={40} className="mx-auto mb-3 text-muted-foreground/30" />
+          <p className="text-muted-foreground text-sm">No items in this list</p>
+          <p className="text-xs text-muted-foreground/60 mt-1">Add movies & series from their detail pages</p>
+        </div>
+      ) : (
+        <div className="space-y-2 px-2">
+          {filtered.map(item => (
+            <div key={`${item.id}-${item.listId}`} className="glass-panel p-3 flex gap-3 group card-hover">
+              <img
+                src={img(item.poster)}
+                alt={item.title}
+                className="w-12 h-17 object-cover rounded-md flex-shrink-0 cursor-pointer"
+                style={{ height: "68px" }}
+                onClick={() => setSelectedItem({ id: item.id, type: item.type })}
+              />
+              <div className="flex-1 min-w-0">
+                <div className="flex items-start justify-between gap-2">
+                  <p className="font-medium truncate cursor-pointer hover:text-primary transition-colors text-sm" onClick={() => setSelectedItem({ id: item.id, type: item.type })}>{item.title}</p>
+                  <Select value={item.priority} onValueChange={v => { manager.updatePriority(item.id, v as any); reload(); }}>
+                    <SelectTrigger className="w-24 h-6 text-[10px] border-0 bg-transparent p-0 gap-0.5 focus:ring-0">
+                      <Badge variant="outline" className={`text-[10px] ${PRIORITY_CONFIG[item.priority].color}`}>{PRIORITY_CONFIG[item.priority].label}</Badge>
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="high">🔴 High</SelectItem>
+                      <SelectItem value="medium">🟡 Medium</SelectItem>
+                      <SelectItem value="low">🟢 Low</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="flex items-center gap-1.5 text-[11px] text-muted-foreground mt-0.5">
+                  {item.type === "movie" ? <Film size={10} /> : <Tv size={10} />}
+                  <span>{item.year}</span>
+                  {item.imdb && item.imdb !== "—" && <span>• IMDb {item.imdb}</span>}
+                </div>
+
+                {editingNotes === item.id ? (
+                  <div className="mt-2 space-y-1.5">
+                    <Textarea value={notesText} onChange={e => setNotesText(e.target.value)} className="bg-secondary/50 border-border/50 text-xs resize-none h-16" placeholder="Add notes..." />
+                    <div className="flex gap-1.5">
+                      <Button size="sm" className="h-6 text-xs px-2" onClick={() => saveNotes(item)}><Check size={10} /> Save</Button>
+                      <Button size="sm" variant="ghost" className="h-6 text-xs px-2" onClick={() => setEditingNotes(null)}><X size={10} /></Button>
+                    </div>
+                  </div>
+                ) : item.notes ? (
+                  <p className="text-[11px] text-muted-foreground mt-1 line-clamp-1 italic cursor-pointer" onClick={() => { setEditingNotes(item.id); setNotesText(item.notes || ""); }}>{item.notes}</p>
+                ) : null}
+              </div>
+              <div className="flex flex-col gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                <button onClick={() => { setEditingNotes(item.id); setNotesText(item.notes || ""); }} className="p-1.5 rounded hover:bg-secondary/80 transition-colors"><Edit2 size={12} /></button>
+                <button onClick={() => handleRemove(item)} className="p-1.5 rounded hover:bg-destructive/20 text-destructive transition-colors"><Trash2 size={12} /></button>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* New List Dialog */}
+      <Dialog open={showNewList} onOpenChange={setShowNewList}>
+        <DialogContent className="glass-panel-strong border-border/50">
+          <DialogHeader><DialogTitle>Create New List</DialogTitle></DialogHeader>
+          <div className="space-y-3">
+            <Input value={newListName} onChange={e => setNewListName(e.target.value)} onKeyDown={e => e.key === "Enter" && createList()} placeholder="List name (e.g. Date Night, Classics...)" className="bg-secondary/50" />
+            <div className="flex gap-2">
+              <Button onClick={createList} className="flex-1">Create</Button>
+              <Button variant="outline" onClick={() => setShowNewList(false)}>Cancel</Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };

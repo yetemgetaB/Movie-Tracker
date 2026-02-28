@@ -7,6 +7,8 @@ import AppLayout from "./components/AppLayout";
 import HomePage from "./pages/HomePage";
 import MoviesPage from "./pages/MoviesPage";
 import SeriesPage from "./pages/SeriesPage";
+import BrowsePage from "./pages/BrowsePage";
+import CalendarPage from "./pages/CalendarPage";
 import VaultPage from "./pages/VaultPage";
 import SettingsPage from "./pages/SettingsPage";
 import AnalyticsPage from "./pages/AnalyticsPage";
@@ -30,6 +32,8 @@ const App = () => {
             <Route path="/" element={<LayoutWrapper><HomePage /></LayoutWrapper>} />
             <Route path="/movies" element={<LayoutWrapper><MoviesPage /></LayoutWrapper>} />
             <Route path="/series" element={<LayoutWrapper><SeriesPage /></LayoutWrapper>} />
+            <Route path="/browse" element={<LayoutWrapper><BrowsePage /></LayoutWrapper>} />
+            <Route path="/calendar" element={<LayoutWrapper><CalendarPage /></LayoutWrapper>} />
             <Route path="/library" element={<LayoutWrapper><VaultPage /></LayoutWrapper>} />
             <Route path="/settings" element={<LayoutWrapper><SettingsPage /></LayoutWrapper>} />
             <Route path="/analytics" element={<LayoutWrapper><AnalyticsPage /></LayoutWrapper>} />
