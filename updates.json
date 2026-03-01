@@ -1,0 +1,19 @@
+{
+  "version": "1.2.1",
+  "notes": "🔧 Minor Fixes & Keyboard Shortcuts\n\n✨ **New Features:**\n- **Working Keyboard Shortcuts** - All shortcuts now functional\n- **Enhanced Navigation** - Better keyboard controls\n\n🔧 **Fixes:**\n- **Keyboard Shortcuts** - Added working keyboard shortcuts functionality\n- **Dynamic Import** - Fixed Tauri updater import warning\n- **Enhanced User Experience** - Better navigation controls\n\n⌨️ **Working Shortcuts:**\n- **Ctrl+K** - Open search (when implemented)\n- **Alt+H/M/S** - Navigate to Home/Movies/Series\n- **Escape** - Close dialogs and go back\n- **F/F11** - Toggle fullscreen\n\n🚀 **Tauri Features:**\n- Auto-update functionality working\n- Keyboard shortcuts functional in desktop app\n- Better desktop integration\n\n� **Ready for Testing!**",
+  "pub_date": "2026-03-01T00:30:00Z",
+  "platforms": {
+    "windows": {
+      "signature": "",
+      "url": "https://github.com/yetemgetaB/Movie-Tracker-Frontend/releases/download/v1.2.1/Movie.Tracker.1.2.1.x64.msi"
+    },
+    "darwin": {
+      "signature": "",
+      "url": "https://github.com/yetemgetaB/Movie-Tracker-Frontend/releases/download/v1.2.1/Movie.Tracker.1.2.1.dmg"
+    },
+    "linux": {
+      "signature": "",
+      "url": "https://github.com/yetemgetaB/Movie-Tracker-Frontend/releases/download/v1.2.1/Movie.Tracker.1.2.1.AppImage"
+    }
+  }
+}

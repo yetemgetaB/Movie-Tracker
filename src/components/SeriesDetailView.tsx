@@ -1,19 +1,19 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import {
-  Star, Clock, Copy, Download, ArrowLeft, Plus, ExternalLink, Play, Tv, ChevronDown,
-} from "lucide-react";
+import { Star, Copy, Download, ArrowLeft, Plus, ExternalLink, Play, Tv, ChevronDown } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { tmdbSeriesApi, omdbApi, img, imgOriginal } from "@/lib/tmdb";
-import { addToCollection, type CollectionSeries } from "@/lib/collection";
+import { tmdbSeriesApi, omdbApi, img, imgOriginal, hasTmdbKey, hasOmdbKey } from "@/lib/tmdb";
+import { addToCollection, isInCollection, type CollectionSeries } from "@/lib/collection";
+import { saveProgress } from "@/lib/watchProgress";
 import RatingBadge from "@/components/RatingBadge";
 import EpisodeRatingGrid from "@/components/EpisodeRatingGrid";
 import WatchlistButton from "@/components/WatchlistButton";
+
 import { toast } from "@/hooks/use-toast";
 
 interface Props {
@@ -32,21 +32,31 @@ const SeriesDetailView = ({ seriesId, onBack, onSelectSeries }: Props) => {
   const { data: series } = useQuery({
     queryKey: ["series-detail", seriesId],
     queryFn: () => tmdbSeriesApi.details(seriesId),
+    enabled: hasTmdbKey(),
   });
 
   const { data: credits } = useQuery({
     queryKey: ["series-credits", seriesId],
     queryFn: () => tmdbSeriesApi.credits(seriesId),
+    enabled: hasTmdbKey(),
   });
 
   const { data: videos = [] } = useQuery({
     queryKey: ["series-videos", seriesId],
     queryFn: () => tmdbSeriesApi.videos(seriesId),
+    enabled: hasTmdbKey(),
   });
 
   const { data: similar = [] } = useQuery({
     queryKey: ["series-similar", seriesId],
     queryFn: () => tmdbSeriesApi.similar(seriesId),
+    enabled: hasTmdbKey(),
+  });
+
+  const { data: recommendations = [] } = useQuery({
+    queryKey: ["series-recommendations", seriesId],
+    queryFn: () => tmdbSeriesApi.recommendations(seriesId),
+    enabled: hasTmdbKey(),
   });
 
   const seasonNum = selectedTrailerSeason !== "main" ? Number(selectedTrailerSeason) : null;
@@ -54,7 +64,7 @@ const SeriesDetailView = ({ seriesId, onBack, onSelectSeries }: Props) => {
   const { data: seasonVideos = [] } = useQuery({
     queryKey: ["season-videos", seriesId, seasonNum],
     queryFn: () => tmdbSeriesApi.seasonVideos(seriesId, seasonNum!),
-    enabled: seasonNum !== null,
+    enabled: seasonNum !== null && hasTmdbKey(),
   });
 
   const imdbId = series?.external_ids?.imdb_id || null;
@@ -62,16 +72,18 @@ const SeriesDetailView = ({ seriesId, onBack, onSelectSeries }: Props) => {
   const { data: omdb } = useQuery({
     queryKey: ["omdb-series", imdbId],
     queryFn: () => (imdbId ? omdbApi.getByImdbId(imdbId) : Promise.resolve(null)),
-    enabled: !!imdbId,
+    enabled: !!imdbId && hasOmdbKey(),
   });
 
-  // Determine which trailer to show
   const activeVideos = selectedTrailerSeason === "main" ? videos : seasonVideos;
   const trailer = activeVideos.find((v) => v.type === "Trailer" && v.site === "YouTube")
     || activeVideos.find((v) => v.site === "YouTube");
 
-  const topCast = credits?.cast.slice(0, 6);
+  const topCast = credits?.cast.slice(0, 10);
   const creators = series?.created_by || [];
+  const alreadyInCollection = isInCollection(seriesId);
+  const realSeasons = series?.seasons.filter((s) => s.season_number > 0) || [];
+  const isOngoing = series?.status !== "Ended" && series?.status !== "Canceled";
 
   const copyPoster = async () => {
     if (!series?.poster_path) return;
@@ -118,9 +130,12 @@ const SeriesDetailView = ({ seriesId, onBack, onSelectSeries }: Props) => {
       addedAt: new Date().toISOString(),
     };
     addToCollection(item);
+    saveProgress({ id: series.id, type: "series", title: series.name, poster: img(series.poster_path), progressPercent: 50 });
     toast({ title: `${series.name} added to Vault!` });
     setShowAddDialog(false);
   };
+
+  const scrollToTrailer = () => document.getElementById("series-trailer")?.scrollIntoView({ behavior: "smooth" });
 
   if (!series) {
     return (
@@ -130,9 +145,6 @@ const SeriesDetailView = ({ seriesId, onBack, onSelectSeries }: Props) => {
       </div>
     );
   }
-
-  const isOngoing = series.status !== "Ended" && series.status !== "Canceled";
-  const realSeasons = series.seasons.filter((s) => s.season_number > 0);
 
   return (
     <div className="pb-8">
@@ -145,7 +157,7 @@ const SeriesDetailView = ({ seriesId, onBack, onSelectSeries }: Props) => {
         </button>
       </div>
 
-      <div className="px-6 -mt-24 relative z-10 space-y-6">
+      <div className="px-6 -mt-24 relative z-10 space-y-5">
         {/* Poster + Core Info */}
         <div className="flex gap-5">
           <div className="relative group flex-shrink-0">
@@ -157,7 +169,7 @@ const SeriesDetailView = ({ seriesId, onBack, onSelectSeries }: Props) => {
           </div>
 
           <div className="flex-1 min-w-0 pt-24 space-y-2">
-            <h1 className="text-2xl font-bold font-display leading-tight">{series.name}</h1>
+            <h1 className="text-2xl font-bold leading-tight">{series.name}</h1>
             {series.tagline && <p className="text-xs text-muted-foreground italic">"{series.tagline}"</p>}
             <div className="flex flex-wrap gap-1.5">
               {omdb?.Rated && omdb.Rated !== "N/A" && (
@@ -176,6 +188,30 @@ const SeriesDetailView = ({ seriesId, onBack, onSelectSeries }: Props) => {
           </div>
         </div>
 
+        {/* Action buttons */}
+        <div className="flex gap-2 flex-wrap">
+          <Button onClick={scrollToTrailer} className="gap-2 flex-1">
+            <Play size={16} fill="currentColor" /> Watch Trailer
+          </Button>
+          {!alreadyInCollection && (
+            <Button variant="outline" onClick={() => setShowAddDialog(true)} className="gap-2 flex-1">
+              <Plus size={16} /> Add to Vault
+            </Button>
+          )}
+        </div>
+
+        {/* Watchlist Button */}
+        <WatchlistButton
+          item={{
+            id: series.id, type: "series", title: series.name,
+            poster: img(series.poster_path), genre: series.genres?.map(g => g.name).join(", ") || "",
+            year: series.first_air_date?.slice(0, 4) || "", seasons: series.number_of_seasons, episodes: series.number_of_episodes,
+            director: creators.map(c => c.name).join(", ") || "", stars: topCast?.slice(0, 3).map(c => c.name).join(", ") || "",
+            rated: "", imdb: "", rt: "", userRating: "", startDate: "", finishDate: "", status: "", nextSeason: "", addedAt: "",
+          }}
+          className="w-full"
+        />
+
         {/* Ratings */}
         <div className="glass-panel p-4">
           <div className="flex gap-6 flex-wrap items-end">
@@ -189,24 +225,27 @@ const SeriesDetailView = ({ seriesId, onBack, onSelectSeries }: Props) => {
           </div>
         </div>
 
-        {/* Seasons Grid with hover */}
+        {/* Seasons with episode selector for streaming */}
         {realSeasons.length > 0 && (
           <div className="space-y-2">
-            <h3 className="text-sm font-semibold font-display flex items-center gap-2">
-              <Tv size={14} className="text-primary" /> Seasons
+            <h3 className="text-sm font-semibold flex items-center gap-2">
+              <Tv size={14} className="text-primary" /> Seasons & Episodes
             </h3>
             <TooltipProvider>
               <div className="flex gap-3 overflow-x-auto scrollbar-hide pb-2">
                 {realSeasons.map((season) => (
                   <Tooltip key={season.id}>
                     <TooltipTrigger asChild>
-                      <div className="flex-shrink-0 w-[90px] cursor-pointer group">
-                        <img
-                          src={img(season.poster_path, "w185")}
-                          alt={season.name}
-                          className="w-full h-[135px] object-cover rounded-lg group-hover:ring-2 ring-primary transition-all"
-                          loading="lazy"
-                        />
+                      <div
+                        className="flex-shrink-0 w-[90px] cursor-pointer group"
+                        onClick={scrollToTrailer}
+                      >
+                        <div className="relative">
+                          <img src={img(season.poster_path, "w185")} alt={season.name} className="w-full h-[135px] object-cover rounded-lg group-hover:ring-2 ring-primary transition-all" loading="lazy" />
+                          <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity bg-black/50 rounded-lg">
+                            <Play size={20} fill="white" className="text-white" />
+                          </div>
+                        </div>
                         <p className="text-[10px] font-medium mt-1 truncate text-center">{season.name}</p>
                         <p className="text-[9px] text-muted-foreground text-center">{season.episode_count} eps</p>
                       </div>
@@ -227,15 +266,20 @@ const SeriesDetailView = ({ seriesId, onBack, onSelectSeries }: Props) => {
           </div>
         )}
 
-        {/* Episode Rating Grid */}
+        {/* Episode Rating Grid (uses IMDb via OMDB) */}
         {series.number_of_seasons > 0 && (
-          <EpisodeRatingGrid seriesId={seriesId} numSeasons={series.number_of_seasons} />
+          <EpisodeRatingGrid
+            seriesId={seriesId}
+            numSeasons={series.number_of_seasons}
+            imdbId={imdbId}
+            seriesTitle={series.name}
+          />
         )}
 
         {/* Trailer with Season Selector */}
-        <div className="space-y-2">
+        <div className="space-y-2" id="series-trailer">
           <div className="flex items-center justify-between">
-            <h3 className="text-sm font-semibold font-display flex items-center gap-2">
+            <h3 className="text-sm font-semibold flex items-center gap-2">
               <Play size={14} className="text-primary" /> Trailer
             </h3>
             <Select value={selectedTrailerSeason} onValueChange={setSelectedTrailerSeason}>
@@ -245,40 +289,32 @@ const SeriesDetailView = ({ seriesId, onBack, onSelectSeries }: Props) => {
               <SelectContent>
                 <SelectItem value="main">Main Series</SelectItem>
                 {realSeasons.map((s) => (
-                  <SelectItem key={s.season_number} value={String(s.season_number)}>
-                    {s.name}
-                  </SelectItem>
+                  <SelectItem key={s.season_number} value={String(s.season_number)}>{s.name}</SelectItem>
                 ))}
               </SelectContent>
             </Select>
           </div>
           {trailer ? (
             <div className="rounded-xl overflow-hidden aspect-video">
-              <iframe
-                src={`https://www.youtube.com/embed/${trailer.key}`}
-                title={trailer.name}
-                className="w-full h-full"
-                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                allowFullScreen
-              />
+              <iframe src={`https://www.youtube.com/embed/${trailer.key}`} title={trailer.name} className="w-full h-full" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowFullScreen />
             </div>
           ) : (
             <div className="glass-panel p-8 text-center">
-              <p className="text-sm text-muted-foreground">No trailer available for this selection</p>
+              <p className="text-sm text-muted-foreground">No trailer available</p>
             </div>
           )}
         </div>
 
         {/* Synopsis */}
         <div className="space-y-2">
-          <h3 className="text-sm font-semibold font-display">Synopsis</h3>
+          <h3 className="text-sm font-semibold">Synopsis</h3>
           <p className="text-sm text-muted-foreground leading-relaxed">{series.overview}</p>
         </div>
 
         {/* Genres */}
         <div className="flex flex-wrap gap-1.5">
           {series.genres.map((g) => (
-            <Badge key={g.id} className="bg-primary/10 text-primary border-0 text-xs">{g.name}</Badge>
+            <Badge key={g.id} className="bg-primary/10 text-primary border-0 text-xs cursor-pointer hover:bg-primary/20 transition-colors">{g.name}</Badge>
           ))}
         </div>
 
@@ -299,7 +335,7 @@ const SeriesDetailView = ({ seriesId, onBack, onSelectSeries }: Props) => {
           <div className="glass-panel p-3 border border-green-500/20">
             <p className="text-xs text-green-400 font-medium">📺 Next Episode</p>
             <p className="text-sm text-muted-foreground mt-1">
-              Season {series.next_episode_to_air.season_number}, Episode {series.next_episode_to_air.episode_number} — {series.next_episode_to_air.air_date}
+              S{series.next_episode_to_air.season_number}E{series.next_episode_to_air.episode_number} — {series.next_episode_to_air.air_date}
             </p>
           </div>
         )}
@@ -307,12 +343,12 @@ const SeriesDetailView = ({ seriesId, onBack, onSelectSeries }: Props) => {
         {/* Cast */}
         {topCast && topCast.length > 0 && (
           <div className="space-y-2">
-            <h3 className="text-sm font-semibold font-display">Cast</h3>
+            <h3 className="text-sm font-semibold">Cast</h3>
             <div className="flex gap-3 overflow-x-auto scrollbar-hide pb-2">
               {topCast.map((c) => (
-                <div key={c.id} className="flex-shrink-0 w-[80px] text-center">
-                  <img src={img(c.profile_path, "w185")} alt={c.name} className="w-16 h-16 rounded-full object-cover mx-auto mb-1" />
-                  <p className="text-[10px] font-medium truncate">{c.name}</p>
+                <div key={c.id} className="flex-shrink-0 w-[80px] text-center cursor-pointer group">
+                  <img src={img(c.profile_path, "w185")} alt={c.name} className="w-16 h-16 rounded-full object-cover mx-auto mb-1 group-hover:ring-2 ring-primary transition-all" />
+                  <p className="text-[10px] font-medium truncate group-hover:text-primary transition-colors">{c.name}</p>
                   <p className="text-[9px] text-muted-foreground truncate">{c.character}</p>
                 </div>
               ))}
@@ -322,9 +358,7 @@ const SeriesDetailView = ({ seriesId, onBack, onSelectSeries }: Props) => {
 
         {/* Awards */}
         {omdb?.Awards && omdb.Awards !== "N/A" && (
-          <div className="glass-panel p-3">
-            <p className="text-xs text-muted-foreground">🏆 {omdb.Awards}</p>
-          </div>
+          <div className="glass-panel p-3"><p className="text-xs text-muted-foreground">🏆 {omdb.Awards}</p></div>
         )}
 
         {/* IMDb Link */}
@@ -335,43 +369,25 @@ const SeriesDetailView = ({ seriesId, onBack, onSelectSeries }: Props) => {
           </a>
         )}
 
-        {/* Add to Collection */}
-        <Button onClick={() => setShowAddDialog(true)} className="w-full bg-primary text-primary-foreground hover:bg-primary/90 glow-border">
-          <Plus size={16} className="mr-2" /> Add to Collection
-        </Button>
-
-        {/* Watchlist Button */}
-        {series && (
-          <WatchlistButton 
-            item={{
-              id: series.id,
-              type: "series",
-              title: series.name,
-              poster: series.poster_path || "",
-              genre: series.genres?.map((g: any) => g.name).join(", ") || "",
-              year: series.first_air_date?.split("-")[0] || "",
-              seasons: series.number_of_seasons || 0,
-              episodes: series.number_of_episodes || 0,
-              director: credits?.crew?.find((c: any) => c.job === "Director")?.name || "",
-              stars: credits?.cast?.slice(0, 3).map((c: any) => c.name).join(", ") || "",
-              rated: "",
-              imdb: "",
-              rt: "",
-              userRating: "",
-              startDate: "",
-              finishDate: "",
-              status: "",
-              nextSeason: "",
-              addedAt: "",
-            }}
-            className="w-full"
-          />
+        {/* Recommendations */}
+        {recommendations.length > 0 && (
+          <div className="space-y-3">
+            <h3 className="text-sm font-semibold">Recommended For You</h3>
+            <div className="flex gap-3 overflow-x-auto scrollbar-hide pb-2">
+              {recommendations.slice(0, 10).map((s) => (
+                <div key={s.id} className="flex-shrink-0 w-[100px] cursor-pointer group" onClick={() => onSelectSeries(s.id)}>
+                  <img src={img(s.poster_path, "w185")} alt={s.name} className="w-full h-[150px] object-cover rounded-lg group-hover:ring-2 ring-primary transition-all" loading="lazy" />
+                  <p className="text-[10px] font-medium mt-1 truncate">{s.name}</p>
+                </div>
+              ))}
+            </div>
+          </div>
         )}
 
         {/* Similar Series */}
         {similar.length > 0 && (
           <div className="space-y-3">
-            <h3 className="text-sm font-semibold font-display">Similar Series</h3>
+            <h3 className="text-sm font-semibold">Similar Series</h3>
             <div className="flex gap-3 overflow-x-auto scrollbar-hide pb-2">
               {similar.slice(0, 10).map((s) => (
                 <div key={s.id} className="flex-shrink-0 w-[100px] cursor-pointer group" onClick={() => onSelectSeries(s.id)}>
@@ -384,20 +400,18 @@ const SeriesDetailView = ({ seriesId, onBack, onSelectSeries }: Props) => {
         )}
       </div>
 
-      {/* Add to Collection Dialog */}
+      {/* Add to Vault Dialog */}
       <Dialog open={showAddDialog} onOpenChange={setShowAddDialog}>
         <DialogContent className="glass-panel-strong border-border/50 max-h-[85vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle className="font-display">Add Series to Collection</DialogTitle>
+            <DialogTitle>Add Series to Vault</DialogTitle>
           </DialogHeader>
           <div className="space-y-3 text-sm">
             <div className="grid grid-cols-2 gap-3">
               <div><label className="text-xs text-muted-foreground">Title</label><p className="font-medium">{series.name}</p></div>
               <div><label className="text-xs text-muted-foreground">Seasons</label><p className="font-medium">{series.number_of_seasons}</p></div>
               <div><label className="text-xs text-muted-foreground">Episodes</label><p className="font-medium">{series.number_of_episodes}</p></div>
-              <div><label className="text-xs text-muted-foreground">Genre</label><p className="font-medium">{series.genres.map((g) => g.name).join(", ")}</p></div>
               <div><label className="text-xs text-muted-foreground">Status</label><p className="font-medium">{series.status}</p></div>
-              <div><label className="text-xs text-muted-foreground">Created By</label><p className="font-medium">{creators.map((c) => c.name).join(", ") || "—"}</p></div>
             </div>
             <div className="grid grid-cols-2 gap-3">
               <div>
@@ -413,12 +427,13 @@ const SeriesDetailView = ({ seriesId, onBack, onSelectSeries }: Props) => {
               <label className="text-xs text-muted-foreground block mb-1">Your Rating (/10)</label>
               <Input type="number" min={0} max={10} step={0.5} placeholder="8.5" value={userRating} onChange={(e) => setUserRating(e.target.value)} className="bg-secondary/50 border-border/50" />
             </div>
-            <Button onClick={handleAddToCollection} className="w-full bg-primary text-primary-foreground hover:bg-primary/90">
+            <Button onClick={handleAddToCollection} className="w-full">
               <Plus size={16} className="mr-2" /> Confirm & Add
             </Button>
           </div>
         </DialogContent>
       </Dialog>
+
     </div>
   );
 };

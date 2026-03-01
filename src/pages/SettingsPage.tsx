@@ -1,580 +1,1112 @@
-import { useState, useRef, useMemo, useCallback } from "react";
+import { useState, useEffect, useCallback } from "react";
 import {
-  Settings, Key, Download, Upload, Palette, ChevronDown,
-  BarChart3, Film, Tv, TrendingUp, Star, Server, Github, Heart, ExternalLink,
-  CheckCircle2, AlertCircle, HelpCircle, Sun, Moon, FileJson, FileSpreadsheet, FileText,
-  RefreshCw, Copy, Shield,
+  Settings, Key, Palette, Monitor, Database, Accessibility, Keyboard,
+  Eye, EyeOff, CheckCircle, XCircle, Trash2, Download, Upload, RotateCcw,
+  Star, RefreshCw, Loader2, ChevronDown,
+  Info, ExternalLink, Heart, Image as ImageIcon, Zap, Tag, GitBranch, DownloadCloud
 } from "lucide-react";
-import { useNavigate } from "react-router-dom";
-import { Input } from "@/components/ui/input";
-import { Button } from "@/components/ui/button";
-import { Switch } from "@/components/ui/switch";
-import { Separator } from "@/components/ui/separator";
-import {
-  BarChart, Bar, XAxis, YAxis, Tooltip as RechartsTooltip, ResponsiveContainer,
-  PieChart, Pie, Cell,
-} from "recharts";
-import { getCollection, type CollectionItem } from "@/lib/collection";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Badge } from "@/components/ui/badge";
+import { applyStoredTheme } from "@/components/AppLayout";
+import { useAccentColor } from "@/hooks/use-accent-color";
+import { useToast } from "@/hooks/use-toast";
+import { check } from "@tauri-apps/plugin-updater";
+import { relaunch } from "@tauri-apps/plugin-process";
 
-import { useAccentColor, ACCENT_PRESETS, type AccentColor } from "@/hooks/use-accent-color";
-import { toast } from "@/hooks/use-toast";
-import ImportExportButton from "@/components/ImportExportButton";
-import UpdateButton from "@/components/UpdateButton";
+const APP_VERSION = "1.2.1";
+const GITHUB_REPO = "yetemgetaB/Movie-Tracker";
+const GITHUB_URL = `https://github.com/${GITHUB_REPO}`;
 
-const GENRE_COLORS = [
-  "hsl(209, 95%, 35%)", "hsl(260, 70%, 60%)", "hsl(340, 70%, 55%)",
-  "hsl(45, 90%, 55%)", "hsl(160, 70%, 45%)", "hsl(20, 85%, 55%)",
-  "hsl(280, 60%, 50%)", "hsl(30, 80%, 50%)",
+const ACCENT_OPTIONS = [
+  { name: "blue", label: "Blue", preview: "209 95% 48%" },
+  { name: "purple", label: "Purple", preview: "260 70% 50%" },
+  { name: "rose", label: "Rose", preview: "340 70% 50%" },
+  { name: "amber", label: "Amber", preview: "45 90% 50%" },
+  { name: "emerald", label: "Emerald", preview: "160 70% 40%" },
+  { name: "red", label: "Red", preview: "0 90% 50%" },
 ];
 
-const SettingsPage = () => {
-  const navigate = useNavigate();
-  const [tmdbKey, setTmdbKey] = useState(() => localStorage.getItem("movie_tracker_tmdb_key") || "");
-  const [omdbKey, setOmdbKey] = useState(() => localStorage.getItem("movie_tracker_omdb_key") || "");
-  const [apiUrl, setApiUrl] = useState(() => localStorage.getItem("movie_tracker_api_url") || "http://localhost:8080/api");
-  const [showApiGuide, setShowApiGuide] = useState(false);
-  const [isDarkMode, setIsDarkMode] = useState(() => localStorage.getItem("movie_tracker_theme") !== "light");
-  const [customColor, setCustomColor] = useState("#034178");
-  const importRef = useRef<HTMLInputElement>(null);
-  const { accent, setAccent } = useAccentColor();
-  const [importItems, setImportItems] = useState<Record<string, any>[] | null>(null);
-  const [showImportDialog, setShowImportDialog] = useState(false);
-  const [isSyncing, setIsSyncing] = useState(false);
+const SECTIONS = [
+  { id: "appearance", label: "Appearance", icon: Palette },
+  { id: "apis", label: "API Keys", icon: Key },
+  { id: "display", label: "Display", icon: Monitor },
+  { id: "accessibility", label: "Accessibility", icon: Accessibility },
+  { id: "data", label: "Data", icon: Database },
+  { id: "about", label: "About", icon: Info },
+  { id: "shortcuts", label: "Shortcuts", icon: Keyboard },
+];
 
-  // Real-time stats
-  const collection = useMemo(() => getCollection(), []);
-  const movies = collection.filter((c) => c.type === "movie");
-  const series = collection.filter((c) => c.type === "series");
+// ── Toggle component ──────────────────────────────────────────────────────────
+const Toggle = ({ checked, onChange }: { checked: boolean; onChange: (v: boolean) => void }) => (
+  <button
+    onClick={() => onChange(!checked)}
+    className={`relative w-11 h-6 rounded-full transition-colors ${checked ? "bg-primary" : "bg-muted"}`}
+    aria-pressed={checked}
+  >
+    <span className={`absolute top-1 w-4 h-4 rounded-full bg-white shadow transition-transform ${checked ? "translate-x-6" : "translate-x-1"}`} />
+  </button>
+);
 
-  const genresBreakdown = useMemo(() => {
-    const map = new Map<string, number>();
-    collection.forEach((c) => {
-      if (c.genre && typeof c.genre === 'string') {
-        c.genre.split(",").forEach((g) => {
-          const name = g.trim();
-          if (name) map.set(name, (map.get(name) || 0) + 1);
-        });
-      }
-    });
-    return Array.from(map.entries())
-      .map(([genre, count]) => ({ genre, count }))
-      .sort((a, b) => b.count - a.count);
-  }, [collection]);
+// ── Modern Zoom Slider ────────────────────────────────────────────────────────
+const ZoomSlider = ({ value, onChange }: { value: number; onChange: (v: number) => void }) => {
+  const min = 70; const max = 130; const step = 5;
+  const pct = ((value - min) / (max - min)) * 100;
+  const ticks = [70, 80, 90, 100, 110, 120, 130];
+  return (
+    <div className="space-y-3">
+      <div className="flex items-center justify-between">
+        <span className="text-xs text-muted-foreground">Smaller</span>
+        <div className="flex items-center gap-2">
+          <span className="text-2xl font-black text-primary tabular-nums">{value}<span className="text-sm font-normal text-muted-foreground">%</span></span>
+        </div>
+        <span className="text-xs text-muted-foreground">Larger</span>
+      </div>
+      <div className="relative h-6 flex items-center">
+        <div className="absolute w-full h-2 rounded-full bg-secondary overflow-hidden">
+          <div className="h-full bg-primary rounded-full transition-all" style={{ width: `${pct}%` }} />
+        </div>
+        <input
+          type="range" min={min} max={max} step={step} value={value}
+          onChange={e => onChange(Number(e.target.value))}
+          className="absolute w-full opacity-0 cursor-pointer h-6"
+        />
+        {/* Custom thumb */}
+        <div
+          className="absolute w-6 h-6 rounded-full bg-primary border-2 border-background shadow-lg shadow-primary/30 transition-all pointer-events-none flex items-center justify-center"
+          style={{ left: `calc(${pct}% - 12px)` }}
+        >
+          <div className="w-1.5 h-1.5 rounded-full bg-white/80" />
+        </div>
+      </div>
+      {/* Tick marks */}
+      <div className="relative flex justify-between px-0">
+        {ticks.map(t => (
+          <div key={t} className="flex flex-col items-center gap-0.5">
+            <div className={`w-0.5 h-1.5 rounded-full transition-colors ${value === t ? "bg-primary" : "bg-muted-foreground/30"}`} />
+            <span className={`text-[9px] tabular-nums transition-colors ${value === t ? "text-primary font-bold" : "text-muted-foreground/50"}`}>{t}</span>
+          </div>
+        ))}
+      </div>
+      <button onClick={() => onChange(100)} className="text-xs text-primary hover:underline flex items-center gap-1">
+        <RotateCcw className="w-3 h-3" /> Reset to 100%
+      </button>
+    </div>
+  );
+};
 
-  const monthlyAdditions = useMemo(() => {
-    const map = new Map<string, { movies: number; series: number }>();
-    collection.forEach((c) => {
-      if (c.addedAt && typeof c.addedAt === 'string') {
-        const month = c.addedAt.slice(0, 7) || "Unknown";
-        const entry = map.get(month) || { movies: 0, series: 0 };
-        entry[c.type === "movie" ? "movies" : "series"]++;
-        map.set(month, entry);
-      }
-    });
-    return Array.from(map.entries())
-      .map(([month, data]) => ({ month: month.slice(5) || month, ...data }))
-      .sort((a, b) => a.month.localeCompare(b.month))
-      .slice(-12);
-  }, [collection]);
+// ── API Key Field with live validation ────────────────────────────────────────
+const ApiKeyField = ({
+  label, storageKey, value, setValue, show, setShow, description, features,
+  onValidate
+}: {
+  label: string; storageKey: string; value: string; setValue: (v: string) => void;
+  show: boolean; setShow: (v: boolean) => void; description: string; features: string[];
+  onValidate: (key: string) => Promise<boolean>;
+}) => {
+  const { toast } = useToast();
+  const [validating, setValidating] = useState(false);
+  const [status, setStatus] = useState<"idle" | "valid" | "invalid">(() => {
+    const saved = localStorage.getItem(storageKey);
+    return saved ? "valid" : "idle";
+  });
+  const [lastValidated, setLastValidated] = useState<string | null>(() =>
+    localStorage.getItem(`${storageKey}_validated_at`)
+  );
 
-  const hasTmdbKey = Boolean(tmdbKey && tmdbKey.length > 10);
-  const hasOmdbKey = Boolean(omdbKey && omdbKey.length > 5);
-
-  const saveApiKeys = () => {
-    if (tmdbKey) localStorage.setItem("movie_tracker_tmdb_key", tmdbKey);
-    if (omdbKey) localStorage.setItem("movie_tracker_omdb_key", omdbKey);
-    toast({ title: "API keys saved! Refresh to apply." });
-  };
-
-  const saveApiUrl = () => {
-    localStorage.setItem("movie_tracker_api_url", apiUrl);
-    toast({ title: "API URL saved!" });
-  };
-
-  // Theme toggle
-  const toggleTheme = useCallback((dark: boolean) => {
-    setIsDarkMode(dark);
-    const root = document.documentElement;
-    if (dark) {
-      localStorage.setItem("movie_tracker_theme", "dark");
-      root.style.setProperty("--background", "220 20% 7%");
-      root.style.setProperty("--foreground", "210 20% 92%");
-      root.style.setProperty("--card", "220 18% 10%");
-      root.style.setProperty("--card-foreground", "210 20% 92%");
-      root.style.setProperty("--popover", "220 18% 10%");
-      root.style.setProperty("--popover-foreground", "210 20% 92%");
-      root.style.setProperty("--secondary", "220 15% 15%");
-      root.style.setProperty("--secondary-foreground", "210 20% 85%");
-      root.style.setProperty("--muted", "220 15% 13%");
-      root.style.setProperty("--muted-foreground", "215 12% 50%");
-      root.style.setProperty("--border", "220 15% 18%");
-      root.style.setProperty("--input", "220 15% 18%");
-      root.style.setProperty("--primary-foreground", "210 20% 95%");
-    } else {
-      localStorage.setItem("movie_tracker_theme", "light");
-      root.style.setProperty("--background", "0 0% 98%");
-      root.style.setProperty("--foreground", "220 15% 15%");
-      root.style.setProperty("--card", "0 0% 100%");
-      root.style.setProperty("--card-foreground", "220 15% 15%");
-      root.style.setProperty("--popover", "0 0% 100%");
-      root.style.setProperty("--popover-foreground", "220 15% 15%");
-      root.style.setProperty("--secondary", "220 15% 92%");
-      root.style.setProperty("--secondary-foreground", "220 15% 30%");
-      root.style.setProperty("--muted", "220 15% 95%");
-      root.style.setProperty("--muted-foreground", "215 12% 45%");
-      root.style.setProperty("--border", "220 15% 85%");
-      root.style.setProperty("--input", "220 15% 85%");
-      root.style.setProperty("--primary-foreground", "0 0% 100%");
+  const testAndSave = async () => {
+    if (!value.trim()) {
+      toast({ title: "Please enter a key first", variant: "destructive" });
+      return;
     }
+    setValidating(true);
+    try {
+      const valid = await onValidate(value.trim());
+      if (valid) {
+        setStatus("valid");
+        localStorage.setItem(storageKey, value.trim());
+        const now = new Date().toLocaleString();
+        localStorage.setItem(`${storageKey}_validated_at`, now);
+        setLastValidated(now);
+        toast({ title: `${label} key validated ✓`, description: "Connected successfully!" });
+      } else {
+        setStatus("invalid");
+        toast({ title: `${label} key is invalid`, variant: "destructive" });
+      }
+    } catch {
+      setStatus("invalid");
+      toast({ title: "Validation failed", description: "Check your internet connection", variant: "destructive" });
+    }
+    setValidating(false);
+  };
+
+  const removeKey = () => {
+    localStorage.removeItem(storageKey);
+    localStorage.removeItem(`${storageKey}_validated_at`);
+    setValue(""); setStatus("idle"); setLastValidated(null);
+    toast({ title: `${label} key removed` });
+  };
+
+  return (
+    <div className="rounded-xl border border-border bg-card p-4 space-y-3">
+      <div className="flex items-start justify-between gap-2">
+        <div className="flex-1 min-w-0">
+          <div className="font-semibold text-foreground">{label}</div>
+          <div className="text-xs text-muted-foreground mt-0.5">{description}</div>
+        </div>
+        {status === "valid" ? (
+          <div className="flex flex-col items-end gap-1">
+            <span className="flex items-center gap-1 text-xs text-green-400"><CheckCircle className="w-4 h-4" /> Connected</span>
+            {lastValidated && <span className="text-[10px] text-muted-foreground">Verified {lastValidated}</span>}
+          </div>
+        ) : status === "invalid" ? (
+          <span className="flex items-center gap-1 text-xs text-destructive"><XCircle className="w-4 h-4" /> Invalid</span>
+        ) : (
+          <span className="flex items-center gap-1 text-xs text-muted-foreground"><XCircle className="w-4 h-4" /> Not set</span>
+        )}
+      </div>
+
+      {/* Features list */}
+      <div className="flex flex-wrap gap-1.5">
+        {features.map(f => (
+          <span key={f} className="px-2 py-0.5 rounded-full bg-secondary text-[10px] text-muted-foreground">{f}</span>
+        ))}
+      </div>
+
+      <div className="flex gap-2">
+        <div className="relative flex-1">
+          <input
+            type={show ? "text" : "password"}
+            value={value}
+            onChange={e => { setValue(e.target.value); setStatus("idle"); }}
+            placeholder={`Enter your ${label} key...`}
+            className="w-full bg-background border border-border rounded-lg px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground pr-10 focus:outline-none focus:ring-2 focus:ring-primary/50"
+          />
+          <button onClick={() => setShow(!show)} className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground">
+            {show ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+          </button>
+        </div>
+        <button
+          onClick={testAndSave}
+          disabled={validating}
+          className="px-4 py-2 rounded-lg bg-primary text-primary-foreground text-sm font-medium hover:opacity-90 transition-opacity disabled:opacity-50 flex items-center gap-1.5"
+        >
+          {validating ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <CheckCircle className="w-3.5 h-3.5" />}
+          {validating ? "Testing..." : "Test & Save"}
+        </button>
+        {status === "valid" && (
+          <button onClick={removeKey} className="px-3 py-2 rounded-lg bg-destructive/20 text-destructive text-sm hover:bg-destructive/30 transition-colors">
+            <Trash2 className="w-4 h-4" />
+          </button>
+        )}
+      </div>
+    </div>
+  );
+};
+
+// ── GitHub Release card ───────────────────────────────────────────────────────
+interface GithubRelease {
+  tag_name: string;
+  name: string;
+  published_at: string;
+  body: string;
+  html_url: string;
+  prerelease: boolean;
+}
+
+// Parse GitHub markdown body into structured sections
+function parseChangelog(body: string) {
+  if (!body?.trim()) return [{ type: "bullet" as const, text: "No changelog provided." }];
+  const lines = body.split("\n");
+  const result: Array<{ type: "heading" | "bullet" | "text"; text: string; level?: number }> = [];
+  for (const raw of lines) {
+    const line = raw.trimEnd();
+    if (!line.trim()) continue;
+    const h3 = line.match(/^###\s+(.*)/);
+    const h2 = line.match(/^##\s+(.*)/);
+    const bullet = line.match(/^[-*+]\s+(.*)/);
+    const numbered = line.match(/^\d+\.\s+(.*)/);
+    if (h2) result.push({ type: "heading", text: h2[1], level: 2 });
+    else if (h3) result.push({ type: "heading", text: h3[1], level: 3 });
+    else if (bullet) result.push({ type: "bullet", text: bullet[1].replace(/\*\*(.*?)\*\*/g, "$1") });
+    else if (numbered) result.push({ type: "bullet", text: numbered[1].replace(/\*\*(.*?)\*\*/g, "$1") });
+    else result.push({ type: "text", text: line.replace(/\*\*(.*?)\*\*/g, "$1") });
+  }
+  return result;
+}
+
+const SECTION_ICONS: Record<string, string> = {
+  "features": "✨", "feature": "✨", "new": "🆕", "fix": "🐛", "fixes": "🐛",
+  "breaking": "⚠️", "improvements": "🔧", "improvement": "🔧", "changes": "📝",
+  "performance": "⚡", "security": "🔒", "deprecat": "⛔",
+};
+
+function getSectionIcon(heading: string) {
+  const lower = heading.toLowerCase();
+  for (const [key, icon] of Object.entries(SECTION_ICONS)) {
+    if (lower.includes(key)) return icon;
+  }
+  return "📌";
+}
+
+const ChangelogCard = ({ release, isLatest }: { release: GithubRelease; isLatest: boolean }) => {
+  const [open, setOpen] = useState(isLatest); // auto-open latest
+  const date = new Date(release.published_at).toLocaleDateString("en-US", { year: "numeric", month: "short", day: "numeric" });
+  const parsed = parseChangelog(release.body);
+  const releaseName = release.name && release.name !== release.tag_name ? release.name : null;
+
+  return (
+    <div className={`rounded-xl border overflow-hidden transition-all ${isLatest ? "border-primary/40 bg-primary/5" : "border-border bg-secondary/20"}`}>
+      <button onClick={() => setOpen(!open)} className="w-full flex items-center justify-between p-4 text-left hover:bg-secondary/30 transition-colors">
+        <div className="flex items-center gap-3">
+          <div className={`w-9 h-9 rounded-full flex items-center justify-center ${isLatest ? "bg-primary/20" : "bg-secondary"}`}>
+            <GitBranch size={15} className={isLatest ? "text-primary" : "text-muted-foreground"} />
+          </div>
+          <div>
+            <div className="font-bold text-sm text-foreground flex items-center gap-2 flex-wrap">
+              <span className={isLatest ? "text-primary" : ""}>{release.tag_name}</span>
+              {releaseName && <span className="text-muted-foreground font-normal">— {releaseName}</span>}
+              {isLatest && <span className="px-2 py-0.5 bg-primary text-primary-foreground text-[10px] rounded-full font-semibold">LATEST</span>}
+              {release.prerelease && <span className="px-1.5 py-0.5 bg-yellow-500/20 text-yellow-500 text-[10px] rounded-full">Pre-release</span>}
+            </div>
+            <div className="text-xs text-muted-foreground mt-0.5">{date}</div>
+          </div>
+        </div>
+        <div className={`transition-transform duration-200 ${open ? "rotate-180" : ""}`}>
+          <ChevronDown size={14} className="text-muted-foreground" />
+        </div>
+      </button>
+
+      {open && (
+        <div className="px-4 pb-4 space-y-2 border-t border-border/30">
+          <div className="pt-3 space-y-1.5">
+            {parsed.map((entry, i) => {
+              if (entry.type === "heading") return (
+                <div key={i} className="flex items-center gap-1.5 pt-2 pb-0.5">
+                  <span>{getSectionIcon(entry.text)}</span>
+                  <span className={`font-semibold text-foreground ${entry.level === 2 ? "text-sm" : "text-xs uppercase tracking-wide text-muted-foreground"}`}>
+                    {entry.text}
+                  </span>
+                </div>
+              );
+              if (entry.type === "bullet") return (
+                <div key={i} className="flex gap-2 text-xs text-muted-foreground pl-1">
+                  <span className="text-primary mt-0.5 flex-shrink-0">▸</span>
+                  <span className="leading-relaxed">{entry.text}</span>
+                </div>
+              );
+              return (
+                <p key={i} className="text-xs text-muted-foreground leading-relaxed pl-1">{entry.text}</p>
+              );
+            })}
+          </div>
+          <a href={release.html_url} target="_blank" rel="noopener noreferrer"
+            className="inline-flex items-center gap-1.5 text-xs text-primary hover:underline mt-1 pt-2">
+            <ExternalLink size={10} /> View full release on GitHub
+          </a>
+        </div>
+      )}
+    </div>
+  );
+};
+
+// ── Main Settings Page ────────────────────────────────────────────────────────
+export default function SettingsPage() {
+  const { toast } = useToast();
+  const { accent, setAccent } = useAccentColor();
+  const [activeSection, setActiveSection] = useState("appearance");
+
+  // Appearance
+  const [theme, setTheme] = useState(() => localStorage.getItem("movie_tracker_theme") || "dark");
+  const [zoom, setZoom] = useState(() => parseInt(localStorage.getItem("movie_tracker_zoom") || "100"));
+
+  // APIs
+  const [tmdbKey, setTmdbKey] = useState(() => localStorage.getItem("movie_tracker_tmdb_api_key") || localStorage.getItem("tmdb_api_key") || "");
+  const [omdbKey, setOmdbKey] = useState(() => localStorage.getItem("movie_tracker_omdb_api_key") || localStorage.getItem("omdb_api_key") || "");
+  const [tvdbKey, setTvdbKey] = useState(() => localStorage.getItem("movie_tracker_tvdb_api_key") || localStorage.getItem("tvdb_api_key") || "");
+  const [showTmdb, setShowTmdb] = useState(false);
+  const [showOmdb, setShowOmdb] = useState(false);
+  const [showTvdb, setShowTvdb] = useState(false);
+
+  // Accessibility
+  const [highContrast, setHighContrast] = useState(() => localStorage.getItem("high_contrast") === "true");
+  const [reduceMotion, setReduceMotion] = useState(() => localStorage.getItem("reduce_motion") === "true");
+  const [largeText, setLargeText] = useState(() => localStorage.getItem("large_text") === "true");
+
+  // Display
+  const [imageQuality, setImageQuality] = useState(() => localStorage.getItem("image_quality") || "high");
+  const [showAdult, setShowAdult] = useState(() => localStorage.getItem("show_adult") === "true");
+  const [defaultPage, setDefaultPage] = useState(() => localStorage.getItem("default_page") || "/");
+
+  // About / GitHub
+  const [githubStars, setGithubStars] = useState<number | null>(null);
+  const [releases, setReleases] = useState<GithubRelease[]>([]);
+  const [checkingUpdate, setCheckingUpdate] = useState(false);
+  const [updateStatus, setUpdateStatus] = useState<string | null>(null);
+  const [loadingReleases, setLoadingReleases] = useState(false);
+  const [updateAvailable, setUpdateAvailable] = useState<{ tag: string; url: string; body: string } | null>(null);
+
+  // Data stats
+  const [storageUsed, setStorageUsed] = useState("—");
+
+  useEffect(() => {
+    document.documentElement.style.fontSize = `${zoom}%`;
+    localStorage.setItem("movie_tracker_zoom", String(zoom));
+  }, [zoom]);
+
+  // Compute storage size
+  useEffect(() => {
+    if (activeSection === "data") {
+      let total = 0;
+      for (const key in localStorage) {
+        if (Object.prototype.hasOwnProperty.call(localStorage, key)) {
+          total += (localStorage.getItem(key) || "").length + key.length;
+        }
+      }
+      setStorageUsed(`${(total / 1024).toFixed(1)} KB`);
+    }
+  }, [activeSection]);
+
+  const fetchGithubInfo = useCallback(async () => {
+    try {
+      const [repoRes] = await Promise.all([
+        fetch(`https://api.github.com/repos/${GITHUB_REPO}`),
+      ]);
+      const repo = await repoRes.json();
+      setGithubStars(repo.stargazers_count);
+    } catch { /* silent */ }
   }, []);
 
-  // Custom color picker handler
-  const handleCustomColor = (hex: string) => {
-    setCustomColor(hex);
-    // Convert hex to HSL
-    const r = parseInt(hex.slice(1, 3), 16) / 255;
-    const g = parseInt(hex.slice(3, 5), 16) / 255;
-    const b = parseInt(hex.slice(5, 7), 16) / 255;
-    const max = Math.max(r, g, b), min = Math.min(r, g, b);
-    let h = 0, s = 0;
-    const l = (max + min) / 2;
-    if (max !== min) {
-      const d = max - min;
-      s = l > 0.5 ? d / (2 - max - min) : d / (max + min);
-      if (max === r) h = ((g - b) / d + (g < b ? 6 : 0)) / 6;
-      else if (max === g) h = ((b - r) / d + 2) / 6;
-      else h = ((r - g) / d + 4) / 6;
+  const fetchReleases = useCallback(async () => {
+    setLoadingReleases(true);
+    try {
+      const res = await fetch(`https://api.github.com/repos/${GITHUB_REPO}/releases`);
+      const data = await res.json();
+      setReleases(Array.isArray(data) ? data.slice(0, 10) : []);
+    } catch { /* silent */ }
+    setLoadingReleases(false);
+  }, []);
+
+  useEffect(() => {
+    if (activeSection === "about") {
+      fetchGithubInfo();
+      fetchReleases();
     }
-    const hsl = `${Math.round(h * 360)} ${Math.round(s * 100)}% ${Math.round(l * 100)}%`;
-    const glowL = Math.min(Math.round(l * 100) + 10, 90);
-    const glow = `${Math.round(h * 360)} ${Math.round(s * 100)}% ${glowL}%`;
-    const root = document.documentElement;
-    root.style.setProperty("--primary", hsl);
-    root.style.setProperty("--accent", hsl);
-    root.style.setProperty("--glow", glow);
-    root.style.setProperty("--ring", hsl);
-    localStorage.setItem("movie_tracker_custom_color", hex);
+  }, [activeSection, fetchGithubInfo, fetchReleases]);
+
+  // Keyboard shortcuts handler
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      // Global shortcuts
+      if (e.ctrlKey && e.key === 'k') {
+        e.preventDefault();
+        // Focus search (would need search implementation)
+        return;
+      }
+
+      // Navigation shortcuts
+      if (e.altKey || e.metaKey) {
+        switch (e.key.toLowerCase()) {
+          case 'h':
+            e.preventDefault();
+            window.location.href = '/';
+            break;
+          case 'm':
+            e.preventDefault();
+            window.location.href = '/movies';
+            break;
+          case 's':
+            e.preventDefault();
+            window.location.href = '/series';
+            break;
+        }
+      }
+
+      // Other shortcuts
+      switch (e.key) {
+        case 'Escape':
+          // Close dialogs or go back
+          const closeButton = document.querySelector('[data-testid="close-button"]') as HTMLButtonElement;
+          if (closeButton) closeButton.click();
+          break;
+        case 'f':
+        case 'F11':
+          e.preventDefault();
+          if (!document.fullscreenElement) {
+            document.documentElement.requestFullscreen();
+          } else {
+            document.exitFullscreen();
+          }
+          break;
+      }
+    };
+
+    document.addEventListener('keydown', handleKeyDown);
+    return () => {
+      document.removeEventListener('keydown', handleKeyDown);
+    };
+  }, []);
+
+  const checkForUpdate = async () => {
+    setCheckingUpdate(true);
+    setUpdateStatus(null);
+    setUpdateAvailable(null);
+    
+    try {
+      // Check if running in Tauri environment
+      if (window.__TAURI__) {
+        // Use Tauri updater
+        const { update, shouldUpdate } = await check();
+        if (shouldUpdate) {
+          setUpdateStatus(`🆕 Update available: ${update.version}`);
+          setUpdateAvailable({ 
+            tag: `v${update.version}`, 
+            url: update.body?.signature || "", 
+            body: update.body?.notes || "",
+            tauriUpdate: update
+          });
+        } else {
+          setUpdateStatus(`✓ You're on the latest version (v${APP_VERSION})`);
+        }
+      } else {
+        // Web version - check GitHub releases
+        const res = await fetch(`https://api.github.com/repos/${GITHUB_REPO}/releases/latest`);
+        const data = await res.json();
+        if (data.tag_name) {
+          const latest = data.tag_name.replace(/^v/, "");
+          if (latest === APP_VERSION) {
+            setUpdateStatus(`✓ You're on the latest version (v${APP_VERSION})`);
+          } else {
+            setUpdateStatus(`🆕 Update available: ${data.tag_name}`);
+            setUpdateAvailable({ tag: data.tag_name, url: data.html_url, body: data.body || "" });
+          }
+        } else {
+          setUpdateStatus("No releases found on GitHub.");
+        }
+      }
+    } catch (error) {
+      console.error('Update check failed:', error);
+      setUpdateStatus("Could not check for updates — check your connection.");
+    }
+    setCheckingUpdate(false);
   };
 
-  // Multi-format export
-  const handleExport = (format: "json" | "csv" | "txt") => {
-    const data = getCollection();
-    let blob: Blob;
-    let ext: string;
-    if (format === "json") {
-      blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" });
-      ext = "json";
-    } else if (format === "csv") {
-      const keys = data.length > 0 ? Object.keys(data[0]) : [];
-      const header = keys.join(",");
-      const rows = data.map((item) => keys.map((k) => `"${String((item as any)[k] || "").replace(/"/g, '""')}"`).join(","));
-      blob = new Blob([header + "\n" + rows.join("\n")], { type: "text/csv" });
-      ext = "csv";
-    } else {
-      const lines = data.map((item) => {
-        const title = item.title;
-        const type = item.type;
-        const rating = item.userRating || "—";
-        const year = item.year;
-        return `${title} (${year}) [${type}] - Rating: ${rating}/10`;
+  const installUpdate = async () => {
+    if (!updateAvailable?.tauriUpdate) return;
+    
+    try {
+      setUpdateStatus("📦 Installing update...");
+      // Import install dynamically
+      const { install } = await import("@tauri-apps/plugin-updater");
+      await install(updateAvailable.tauriUpdate);
+      setUpdateStatus("✅ Update installed! Restarting...");
+      await relaunch();
+    } catch (error) {
+      console.error('Update installation failed:', error);
+      setUpdateStatus("❌ Failed to install update.");
+      toast({ 
+        title: "Update Failed", 
+        description: "Could not install the update. Please try again.", 
+        variant: "destructive" 
       });
-      blob = new Blob([lines.join("\n")], { type: "text/plain" });
-      ext = "txt";
     }
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = `movie-tracker-collection-${new Date().toISOString().slice(0, 10)}.${ext}`;
-    a.click();
-    URL.revokeObjectURL(url);
-    toast({ title: `Exported ${data.length} items as ${ext.toUpperCase()}!` });
   };
 
-  const handleImport = (e: React.ChangeEvent<HTMLInputElement>) => {
+  function saveTheme(t: string) {
+    setTheme(t);
+    localStorage.setItem("movie_tracker_theme", t);
+    applyStoredTheme();
+    toast({ title: `${t === "light" ? "Light" : "Dark"} mode applied` });
+  }
+
+  // API validators
+  const validateTmdb = async (key: string) => {
+    const res = await fetch(`https://api.themoviedb.org/3/configuration?api_key=${key}`);
+    return res.ok;
+  };
+  const validateOmdb = async (key: string) => {
+    const res = await fetch(`https://www.omdbapi.com/?apikey=${key}&t=test`);
+    const data = await res.json();
+    return data.Response !== "False" || data.Error !== "Invalid API key!";
+  };
+  const validateTvdb = async (key: string) => {
+    // TVDB v4 token endpoint
+    const res = await fetch("https://api4.thetvdb.com/v4/login", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ apikey: key }),
+    });
+    return res.ok;
+  };
+
+  function exportData() {
+    const data: Record<string, string> = {};
+    for (const key in localStorage) {
+      if (Object.prototype.hasOwnProperty.call(localStorage, key)) {
+        data[key] = localStorage.getItem(key) || "";
+      }
+    }
+    const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a"); a.href = url; a.download = "movie-tracker-backup.json"; a.click();
+    URL.revokeObjectURL(url);
+    toast({ title: "Data exported!" });
+  }
+
+  function importData(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
     if (!file) return;
     const reader = new FileReader();
     reader.onload = (ev) => {
       try {
-        const text = ev.target?.result as string;
-        let items: Record<string, any>[];
-        if (file.name.endsWith(".json")) {
-          const data = JSON.parse(text);
-          if (!Array.isArray(data)) throw new Error("Invalid format — expected an array");
-          items = data;
-        } else if (file.name.endsWith(".csv")) {
-          const lines = text.split("\n").filter(Boolean);
-          if (lines.length < 2) throw new Error("Empty CSV");
-          const headers = lines[0].split(",").map((h) => h.trim());
-          items = lines.slice(1).map((line) => {
-            const vals = line.match(/(".*?"|[^,]+)/g) || [];
-            const obj: Record<string, string> = {};
-            headers.forEach((h, i) => { obj[h] = (vals[i] || "").replace(/^"|"$/g, ""); });
-            return obj;
-          });
-        } else {
-          throw new Error("Unsupported format. Use JSON or CSV.");
-        }
-        // Open smart validation dialog
-        setImportItems(items);
-        setShowImportDialog(true);
-      } catch (err: any) {
-        toast({ title: err.message || "Invalid file format", variant: "destructive" });
-      }
+        const data = JSON.parse(ev.target?.result as string);
+        Object.entries(data).forEach(([k, v]) => localStorage.setItem(k, v as string));
+        toast({ title: "Data imported!", description: "Reload the page to apply changes." });
+      } catch { toast({ title: "Import failed", variant: "destructive" }); }
     };
     reader.readAsText(file);
-    e.target.value = "";
+  }
+
+  function clearData(key: string, label: string) {
+    localStorage.removeItem(key);
+    toast({ title: `${label} cleared` });
+  }
+
+  function resetApp() {
+    if (!confirm("Reset ALL app data? This cannot be undone.")) return;
+    localStorage.clear();
+    toast({ title: "App reset — reload to start fresh" });
+  }
+
+  const getDataStats = () => {
+    const getCount = (key: string) => {
+      try { return JSON.parse(localStorage.getItem(key) || "[]").length; } catch { return 0; }
+    };
+    return [
+      { label: "Vault items", count: getCount("movie_tracker_collection"), key: "movie_tracker_collection" },
+      { label: "Watchlist items", count: getCount("movie_tracker_watchlist"), key: "movie_tracker_watchlist" },
+      { label: "Watch progress", count: getCount("movie_tracker_watch_progress"), key: "movie_tracker_watch_progress" },
+      { label: "Search history (movies)", count: getCount("movie_tracker_search_history_movies"), key: "movie_tracker_search_history_movies" },
+      { label: "Search history (series)", count: getCount("movie_tracker_search_history_series"), key: "movie_tracker_search_history_series" },
+    ];
   };
 
-  const totalWatchTime = useMemo(() => {
-    return movies.reduce((sum, m) => {
-      const mins = parseInt((m as any).runtime) || 0;
-      return sum + mins;
-    }, 0);
-  }, [movies]);
+  const renderSection = () => {
+    switch (activeSection) {
+      case "appearance":
+        return (
+          <div className="space-y-6">
+            <h2 className="text-xl font-bold text-foreground">Appearance</h2>
 
-  const avgRating = useMemo(() => {
-    const rated = collection.filter((c) => c.userRating && c.userRating !== "—");
-    if (rated.length === 0) return "—";
-    const sum = rated.reduce((s, c) => s + (parseFloat(c.userRating) || 0), 0);
-    return (sum / rated.length).toFixed(1);
-  }, [collection]);
+            {/* Theme */}
+            <div className="rounded-xl border border-border bg-card p-4 space-y-4">
+              <div className="font-semibold text-foreground">Theme</div>
+              <div className="grid grid-cols-2 gap-3">
+                {([
+                  { id: "dark", label: "Dark Mode", preview: "bg-gray-900" },
+                  { id: "light", label: "Light Mode", preview: "bg-gray-100 border border-gray-300" },
+                ] as const).map(({ id, label, preview }) => (
+                  <button key={id} onClick={() => saveTheme(id)}
+                    className={`p-4 rounded-xl border-2 flex items-center gap-3 transition-all ${theme === id ? "border-primary bg-primary/10" : "border-border hover:border-primary/50"}`}>
+                    <div className={`w-8 h-8 rounded-full ${preview} flex-shrink-0`} />
+                    <span className="font-medium text-foreground text-sm">{label}</span>
+                    {theme === id && <CheckCircle className="w-4 h-4 text-primary ml-auto" />}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Accent Color */}
+            <div className="rounded-xl border border-border bg-card p-4 space-y-4">
+              <div className="font-semibold text-foreground">Accent Color</div>
+              <div className="grid grid-cols-6 gap-3">
+                {ACCENT_OPTIONS.map(c => (
+                  <button key={c.name} onClick={() => setAccent(c.name as any)} title={c.label}
+                    className={`group flex flex-col items-center gap-2 p-2 rounded-xl transition-all ${accent === c.name ? "bg-primary/10 ring-2 ring-primary" : "hover:bg-secondary/50"}`}>
+                    <div className={`w-9 h-9 rounded-full transition-transform group-hover:scale-110`}
+                      style={{ background: `hsl(${c.preview})`, boxShadow: accent === c.name ? `0 0 12px hsl(${c.preview}/0.6)` : undefined }} />
+                    <span className="text-[9px] text-muted-foreground">{c.label}</span>
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Zoom Slider */}
+            <div className="rounded-xl border border-border bg-card p-4 space-y-4">
+              <div>
+                <div className="font-semibold text-foreground">UI Scale / Zoom</div>
+                <div className="text-xs text-muted-foreground">Adjust the overall size of the interface</div>
+              </div>
+              <ZoomSlider value={zoom} onChange={setZoom} />
+            </div>
+
+            {/* Default Landing Page */}
+            <div className="rounded-xl border border-border bg-card p-4 space-y-3">
+              <div className="font-semibold text-foreground">Default Landing Page</div>
+              <select value={defaultPage} onChange={e => { setDefaultPage(e.target.value); localStorage.setItem("default_page", e.target.value); }}
+                className="w-full bg-background border border-border rounded-lg px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/50">
+                <option value="/">Home</option>
+                <option value="/movies">Movies</option>
+                <option value="/series">Series</option>
+                <option value="/vault">Vault</option>
+                <option value="/watchlist">Watchlist</option>
+                <option value="/analytics">Analytics</option>
+              </select>
+            </div>
+          </div>
+        );
+
+      case "apis":
+        return (
+          <div className="space-y-6">
+            <h2 className="text-xl font-bold text-foreground">API Keys</h2>
+
+            {/* Features bar */}
+            <div className="rounded-xl bg-secondary/30 border border-border p-3 flex flex-wrap gap-2 text-xs">
+              <span className="font-medium text-muted-foreground">Features available:</span>
+              {[
+                { label: "🎬 Movies & Series", needs: "TMDB", has: !!localStorage.getItem("tmdb_api_key") },
+                { label: "⭐ IMDb Ratings", needs: "OMDB", has: !!localStorage.getItem("omdb_api_key") },
+                { label: "📺 Episode Details", needs: "TVDB", has: !!localStorage.getItem("tvdb_api_key") },
+              ].map(f => (
+                <span key={f.label} className={`px-2 py-1 rounded-full ${f.has ? "bg-green-500/20 text-green-400" : "bg-secondary text-muted-foreground line-through"}`}>
+                  {f.label}
+                </span>
+              ))}
+            </div>
+
+            <p className="text-sm text-muted-foreground">Click "Test & Save" to validate your key before it's stored. The app works with any combination of keys.</p>
+
+            <ApiKeyField
+              label="TMDB" storageKey="tmdb_api_key"
+              value={tmdbKey} setValue={setTmdbKey}
+              show={showTmdb} setShow={setShowTmdb}
+              description="Required for all movie & series data, trailers, cast, recommendations"
+              features={["Trending", "Search", "Trailers", "Cast", "Recommendations", "Genres"]}
+              onValidate={validateTmdb}
+            />
+            <ApiKeyField
+              label="OMDB" storageKey="omdb_api_key"
+              value={omdbKey} setValue={setOmdbKey}
+              show={showOmdb} setShow={setShowOmdb}
+              description="Enables IMDb & Rotten Tomatoes ratings, episode ratings, content rating"
+              features={["IMDb Ratings", "RT Scores", "Episode Ratings", "Rated (PG/R/etc)"]}
+              onValidate={validateOmdb}
+            />
+            <ApiKeyField
+              label="TVDB" storageKey="tvdb_api_key"
+              value={tvdbKey} setValue={setTvdbKey}
+              show={showTvdb} setShow={setShowTvdb}
+              description="Enhanced series data, episode artwork, and additional cast info"
+              features={["Episode Artwork", "Extended Cast", "Network Info"]}
+              onValidate={validateTvdb}
+            />
+
+            <div className="rounded-xl border border-border/50 bg-card/50 p-4 text-xs text-muted-foreground space-y-1">
+              <p className="font-medium text-foreground">How to get API keys:</p>
+              <p>🎬 <strong>TMDB:</strong> <a href="https://www.themoviedb.org/settings/api" target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">themoviedb.org/settings/api</a> — free account required</p>
+              <p>⭐ <strong>OMDB:</strong> <a href="https://www.omdbapi.com/apikey.aspx" target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">omdbapi.com/apikey.aspx</a> — 1000 req/day free</p>
+              <p>📺 <strong>TVDB:</strong> <a href="https://thetvdb.com/api-information" target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">thetvdb.com/api-information</a> — free registration</p>
+            </div>
+          </div>
+        );
+
+      case "display":
+        return (
+          <div className="space-y-6">
+            <h2 className="text-xl font-bold text-foreground">Display Settings</h2>
+
+            <div className="rounded-xl border border-border bg-card p-4 space-y-4">
+              <div className="font-semibold text-foreground">Image Quality</div>
+              <div className="grid grid-cols-2 gap-2">
+                {[
+                  { id: "low", label: "Low", desc: "Saves data" },
+                  { id: "medium", label: "Medium", desc: "Balanced" },
+                  { id: "high", label: "High", desc: "Best quality" },
+                  { id: "auto", label: "Auto", desc: "Based on connection" },
+                ].map(q => (
+                  <button key={q.id} onClick={() => { setImageQuality(q.id); localStorage.setItem("image_quality", q.id); toast({ title: `Image quality: ${q.label}` }); }}
+                    className={`p-3 rounded-xl border-2 text-left transition-all ${imageQuality === q.id ? "border-primary bg-primary/10" : "border-border hover:border-primary/50"}`}>
+                    <div className="flex items-center gap-2 mb-0.5">
+                      <ImageIcon size={13} className={imageQuality === q.id ? "text-primary" : "text-muted-foreground"} />
+                      <span className="font-medium text-sm text-foreground">{q.label}</span>
+                      {imageQuality === q.id && <CheckCircle size={12} className="text-primary ml-auto" />}
+                    </div>
+                    <span className="text-[11px] text-muted-foreground">{q.desc}</span>
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <div className="rounded-xl border border-border bg-card divide-y divide-border">
+              <div className="flex items-center justify-between p-4">
+                <div>
+                  <div className="font-medium text-foreground">Show Adult Content</div>
+                  <div className="text-xs text-muted-foreground">Include R-rated and adult titles in results</div>
+                </div>
+                <Toggle checked={showAdult} onChange={v => { setShowAdult(v); localStorage.setItem("show_adult", String(v)); }} />
+              </div>
+            </div>
+
+            <div className="rounded-xl border border-border bg-card p-4 space-y-3">
+              <div className="font-semibold text-foreground">Card Density</div>
+              {["compact", "normal", "large"].map(d => {
+                const current = localStorage.getItem("card_density") || "normal";
+                return (
+                  <button key={d} onClick={() => { localStorage.setItem("card_density", d); toast({ title: `Density: ${d}` }); }}
+                    className={`w-full p-3 rounded-lg border-2 flex items-center justify-between transition-all ${current === d ? "border-primary bg-primary/10" : "border-border hover:border-primary/50"}`}>
+                    <div className="flex items-center gap-3">
+                      <div className="flex gap-0.5">
+                        {Array.from({ length: d === "compact" ? 5 : d === "normal" ? 3 : 2 }).map((_, i) => (
+                          <div key={i} className={`rounded bg-primary/40 ${d === "compact" ? "w-3 h-4" : d === "normal" ? "w-4 h-6" : "w-5 h-8"}`} />
+                        ))}
+                      </div>
+                      <span className="capitalize text-foreground text-sm">{d}</span>
+                    </div>
+                    {current === d && <CheckCircle className="w-4 h-4 text-primary" />}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        );
+
+      case "accessibility":
+        return (
+          <div className="space-y-6">
+            <h2 className="text-xl font-bold text-foreground">Accessibility</h2>
+            <div className="rounded-xl border border-border bg-card divide-y divide-border">
+              {[
+                {
+                  label: "High Contrast", desc: "Increases border and text contrast",
+                  checked: highContrast,
+                  onChange: (v: boolean) => {
+                    setHighContrast(v); localStorage.setItem("high_contrast", String(v));
+                    document.documentElement.classList.toggle("high-contrast", v);
+                    if (v) {
+                      document.documentElement.style.setProperty("--border", "220 15% 35%");
+                    } else {
+                      applyStoredTheme();
+                    }
+                  }
+                },
+                {
+                  label: "Large Text", desc: "Increases base font size (sets zoom to 115%)",
+                  checked: largeText,
+                  onChange: (v: boolean) => {
+                    setLargeText(v); localStorage.setItem("large_text", String(v));
+                    setZoom(v ? 115 : 100);
+                  }
+                },
+                {
+                  label: "Reduce Motion", desc: "Minimizes animations and transitions",
+                  checked: reduceMotion,
+                  onChange: (v: boolean) => {
+                    setReduceMotion(v); localStorage.setItem("reduce_motion", String(v));
+                    document.documentElement.classList.toggle("reduce-motion", v);
+                    if (v) {
+                      document.documentElement.style.setProperty("--animation-duration", "0ms");
+                    } else {
+                      document.documentElement.style.removeProperty("--animation-duration");
+                    }
+                  }
+                },
+              ].map(item => (
+                <div key={item.label} className="flex items-center justify-between p-4">
+                  <div>
+                    <div className="font-medium text-foreground">{item.label}</div>
+                    <div className="text-xs text-muted-foreground">{item.desc}</div>
+                  </div>
+                  <Toggle checked={item.checked} onChange={item.onChange} />
+                </div>
+              ))}
+            </div>
+          </div>
+        );
+
+      case "data":
+        const stats = getDataStats();
+        return (
+          <div className="space-y-6">
+            <h2 className="text-xl font-bold text-foreground">Data Management</h2>
+
+            {/* Storage summary */}
+            <div className="rounded-xl border border-border bg-card p-4 space-y-3">
+              <div className="flex items-center justify-between">
+                <div className="font-semibold text-foreground">Storage Used</div>
+                <span className="text-primary font-bold">{storageUsed}</span>
+              </div>
+              <div className="space-y-2">
+                {stats.map(s => (
+                  <div key={s.label} className="flex items-center justify-between py-2 border-b border-border/30 last:border-0">
+                    <span className="text-sm text-foreground">{s.label}</span>
+                    <div className="flex items-center gap-2">
+                      <Badge variant="secondary" className="text-xs">{s.count}</Badge>
+                      {s.count > 0 && (
+                        <button onClick={() => clearData(s.key, s.label)} className="text-xs text-muted-foreground hover:text-destructive transition-colors">
+                          <Trash2 size={12} />
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 gap-3">
+              <button onClick={exportData} className="flex items-center gap-3 p-4 rounded-xl border border-border bg-card hover:bg-secondary transition-colors text-left">
+                <Download className="w-5 h-5 text-primary" />
+                <div>
+                  <div className="font-medium text-foreground">Export All Data</div>
+                  <div className="text-xs text-muted-foreground">Download your complete data as JSON backup</div>
+                </div>
+              </button>
+              <label className="flex items-center gap-3 p-4 rounded-xl border border-border bg-card hover:bg-secondary transition-colors cursor-pointer">
+                <Upload className="w-5 h-5 text-primary" />
+                <div>
+                  <div className="font-medium text-foreground">Import Data</div>
+                  <div className="text-xs text-muted-foreground">Restore from a previous backup file</div>
+                </div>
+                <input type="file" accept=".json" onChange={importData} className="hidden" />
+              </label>
+              <button onClick={resetApp} className="flex items-center gap-3 p-4 rounded-xl border border-destructive/30 bg-destructive/10 hover:bg-destructive/20 transition-colors text-left">
+                <RotateCcw className="w-5 h-5 text-destructive" />
+                <div>
+                  <div className="font-medium text-destructive">Reset App</div>
+                  <div className="text-xs text-muted-foreground">Wipe all data and return to defaults</div>
+                </div>
+              </button>
+            </div>
+          </div>
+        );
+
+      case "about":
+        return (
+          <div className="space-y-6">
+            <h2 className="text-xl font-bold text-foreground">About</h2>
+
+            {/* App card */}
+            <div className="rounded-xl border border-border bg-card p-6 space-y-4">
+              <div className="flex items-center gap-4">
+                <div className="w-14 h-14 rounded-2xl bg-primary/10 flex items-center justify-center">
+                  <span className="text-2xl">🎬</span>
+                </div>
+                <div>
+                  <h3 className="text-lg font-bold text-foreground">Movie Tracker</h3>
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs text-muted-foreground">v{APP_VERSION}</span>
+                    <span className="w-1 h-1 rounded-full bg-muted-foreground" />
+                    <span className="text-xs text-muted-foreground">Built with React + Vite</span>
+                  </div>
+                </div>
+              </div>
+              <p className="text-sm text-muted-foreground leading-relaxed">
+                A beautiful Netflix-style movie and series tracker. Discover, track, and organize your watching journey.
+              </p>
+              <div className="flex items-center gap-1 text-sm text-muted-foreground">
+                Made with <Heart size={14} className="text-red-400 fill-red-400 mx-1" /> by{" "}
+                <a href={`https://github.com/yetemgetaB`} target="_blank" rel="noopener noreferrer"
+                  className="text-primary hover:underline font-medium">Yetemgeta Bekele</a>
+              </div>
+            </div>
+
+            {/* GitHub */}
+            <div className="rounded-xl border border-border bg-card p-4 space-y-3">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <svg viewBox="0 0 24 24" className="w-5 h-5 fill-foreground"><path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0 0 24 12c0-6.63-5.37-12-12-12z" /></svg>
+                  <div>
+                    <div className="font-semibold text-foreground text-sm">GitHub Repository</div>
+                    <div className="text-xs text-muted-foreground">{GITHUB_REPO}</div>
+                  </div>
+                </div>
+                <div className="flex items-center gap-3">
+                  {githubStars !== null && (
+                    <div className="flex items-center gap-1 text-xs text-yellow-400">
+                      <Star size={12} fill="currentColor" /> {githubStars}
+                    </div>
+                  )}
+                  <a href={GITHUB_URL} target="_blank" rel="noopener noreferrer"
+                    className="px-3 py-1.5 rounded-lg bg-secondary text-xs text-foreground hover:bg-secondary/80 flex items-center gap-1.5">
+                    <ExternalLink size={11} /> View
+                  </a>
+                </div>
+              </div>
+            </div>
+
+            {/* Check for updates */}
+            <div className="rounded-xl border border-border bg-card p-4 space-y-3">
+              <div className="flex items-center justify-between">
+                <div>
+                  <div className="font-semibold text-foreground">Check for Updates</div>
+                  <div className="text-xs text-muted-foreground">Current version: v{APP_VERSION}</div>
+                </div>
+                <button
+                  onClick={checkForUpdate}
+                  disabled={checkingUpdate}
+                  className="px-4 py-2 rounded-lg bg-primary text-primary-foreground text-sm font-medium hover:opacity-90 transition-opacity disabled:opacity-50 flex items-center gap-1.5"
+                >
+                  {checkingUpdate ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <RefreshCw className="w-3.5 h-3.5" />}
+                  {checkingUpdate ? "Checking..." : "Check"}
+                </button>
+              </div>
+              {updateStatus && (
+                <div className={`p-3 rounded-lg text-sm ${updateStatus.startsWith("✓") ? "bg-green-500/10 text-green-400" : updateStatus.startsWith("🆕") ? "bg-primary/10 text-primary" : "bg-secondary text-muted-foreground"}`}>
+                  {updateStatus}
+                </div>
+              )}
+            </div>
+
+            {/* Changelog */}
+            <div className="space-y-3">
+              <div className="flex items-center justify-between">
+                <div className="font-semibold text-foreground">Changelog</div>
+                {loadingReleases && <Loader2 size={14} className="animate-spin text-muted-foreground" />}
+              </div>
+              {releases.length === 0 && !loadingReleases ? (
+                <div className="rounded-xl border border-border bg-card p-6 text-center text-sm text-muted-foreground">
+                  No releases found. <a href={GITHUB_URL} target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">Check GitHub</a>
+                </div>
+              ) : (
+                <div className="space-y-2">
+                  {releases.map((r, i) => <ChangelogCard key={r.tag_name} release={r} isLatest={i === 0} />)}
+                </div>
+              )}
+            </div>
+          </div>
+        );
+
+      case "shortcuts":
+        return (
+          <div className="space-y-6">
+            <h2 className="text-xl font-bold text-foreground">Keyboard Shortcuts</h2>
+            <div className="rounded-xl border border-border bg-card divide-y divide-border">
+              {[
+                ["Search", "Ctrl + K"],
+                ["Go to Home", "G then H"],
+                ["Go to Movies", "G then M"],
+                ["Go to Series", "G then S"],
+                ["Close / Back", "Escape"],
+                ["Toggle Fullscreen", "F"],
+              ].map(([action, shortcut]) => (
+                <div key={action} className="flex items-center justify-between px-4 py-3">
+                  <span className="text-sm text-foreground">{action}</span>
+                  <kbd className="px-2 py-1 text-xs bg-muted rounded border border-border font-mono text-muted-foreground">{shortcut}</kbd>
+                </div>
+              ))}
+            </div>
+          </div>
+        );
+
+      default: return null;
+    }
+  };
 
   return (
-    <div className="px-6 pt-6 pb-8 space-y-6">
-      <div className="fade-up">
-        <h1 className="text-2xl font-bold font-display">
-          <Settings size={24} className="inline mr-2 text-primary" />
-          Settings
-        </h1>
-        <p className="text-sm text-muted-foreground mt-1">Configure your Movie Tracker</p>
+    <div className="min-h-screen bg-background text-foreground">
+      <div className="max-w-5xl mx-auto px-4 py-8">
+        <div className="flex items-center gap-3 mb-8">
+          <Settings className="w-7 h-7 text-primary" />
+          <h1 className="text-3xl font-bold text-foreground">Settings</h1>
+        </div>
+
+        <div className="flex gap-6">
+          <aside className="w-52 shrink-0">
+            <nav className="space-y-1">
+              {SECTIONS.map(({ id, label, icon: Icon }) => (
+                <button key={id} onClick={() => setActiveSection(id)}
+                  className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-all ${activeSection === id ? "bg-primary text-primary-foreground shadow-lg shadow-primary/20" : "text-muted-foreground hover:bg-secondary hover:text-foreground"}`}>
+                  <Icon className="w-4 h-4" />
+                  {label}
+                </button>
+              ))}
+            </nav>
+          </aside>
+
+          <main className="flex-1 min-w-0">
+            {renderSection()}
+          </main>
+        </div>
+
+        {/* Footer */}
+        <div className="mt-12 pt-6 border-t border-border text-center">
+          <p className="text-xs text-muted-foreground flex items-center justify-center gap-1">
+            Made with <Heart size={11} className="text-red-400 fill-red-400" /> by{" "}
+            <a href="https://github.com/yetemgetaB" target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">Yetemgeta Bekele</a>
+            <span className="mx-1">•</span> v{APP_VERSION}
+          </p>
+        </div>
       </div>
 
-      
-      <section className="glass-panel p-4 fade-up" style={{ animationDelay: "0.03s" }}>
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            {hasTmdbKey && hasOmdbKey ? (
-              <CheckCircle2 size={20} className="text-green-400" />
-            ) : (
-              <AlertCircle size={20} className="text-amber-400" />
-            )}
-            <div>
-              <p className="text-sm font-medium">
-                {hasTmdbKey && hasOmdbKey ? "APIs Connected" : "API Setup Required"}
-              </p>
-              <p className="text-xs text-muted-foreground">
-                TMDB: {hasTmdbKey ? "✓" : "✗"} · OMDB: {hasOmdbKey ? "✓" : "✗"}
-              </p>
-            </div>
-          </div>
-          <Button size="sm" variant="ghost" onClick={() => setShowApiGuide(!showApiGuide)} className="text-xs">
-            <HelpCircle size={14} className="mr-1" /> Setup Guide
-            <ChevronDown size={14} className={`ml-1 transition-transform ${showApiGuide ? "rotate-180" : ""}`} />
-          </Button>
-        </div>
-
-        {showApiGuide && (
-          <div className="mt-4 space-y-4 border-t border-border/30 pt-4 animate-fade-in">
-            <div className="space-y-3">
-              <h4 className="text-sm font-semibold flex items-center gap-2">
-                <span className="w-6 h-6 rounded-full bg-primary/20 text-primary text-xs flex items-center justify-center font-bold">1</span>
-                Get TMDB API Key
-              </h4>
-              <div className="ml-8 space-y-1 text-xs text-muted-foreground">
-                <p>1. Go to <a href="https://www.themoviedb.org/signup" target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">themoviedb.org/signup</a></p>
-                <p>2. Create a free account and verify your email</p>
-                <p>3. Go to <a href="https://www.themoviedb.org/settings/api" target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">Settings → API</a></p>
-                <p>4. Request an API key (choose "Developer" option)</p>
-                <p>5. Copy the "API Key (v3 auth)" value</p>
-              </div>
-            </div>
-            <div className="space-y-3">
-              <h4 className="text-sm font-semibold flex items-center gap-2">
-                <span className="w-6 h-6 rounded-full bg-primary/20 text-primary text-xs flex items-center justify-center font-bold">2</span>
-                Get OMDB API Key
-              </h4>
-              <div className="ml-8 space-y-1 text-xs text-muted-foreground">
-                <p>1. Go to <a href="https://www.omdbapi.com/apikey.aspx" target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">omdbapi.com/apikey</a></p>
-                <p>2. Choose the free tier (1,000 daily limit)</p>
-                <p>3. Enter your email and submit</p>
-                <p>4. Check your email for the API key</p>
-              </div>
-            </div>
-            <div className="space-y-3">
-              <h4 className="text-sm font-semibold flex items-center gap-2">
-                <span className="w-6 h-6 rounded-full bg-primary/20 text-primary text-xs flex items-center justify-center font-bold">3</span>
-                Paste Keys Below
-              </h4>
-              <p className="ml-8 text-xs text-muted-foreground">Enter your keys in the API Keys section below and click Save.</p>
-            </div>
-          </div>
-        )}
-      </section>
-
-      {/* Backend API URL */}
-      <section className="glass-panel p-5 space-y-4 fade-up" style={{ animationDelay: "0.05s" }}>
-        <div className="flex items-center gap-2">
-          <Server size={18} className="text-primary" />
-          <h2 className="font-display font-semibold">Backend API</h2>
-        </div>
-        <Separator className="bg-border/50" />
-        <div>
-          <label className="text-xs text-muted-foreground block mb-1.5">API Base URL</label>
-          <Input placeholder="http://localhost:8080/api" value={apiUrl} onChange={(e) => setApiUrl(e.target.value)} className="bg-secondary/50 border-border/50 focus:border-primary/50" />
-          <p className="text-[11px] text-muted-foreground mt-1.5">Point this to your Java backend REST API endpoint</p>
-        </div>
-        <Button size="sm" onClick={saveApiUrl} className="bg-primary text-primary-foreground hover:bg-primary/90">
-          Save & Test Connection
-        </Button>
-      </section>
-
-      {/* API Keys */}
-      <section className="glass-panel p-5 space-y-4 fade-up" style={{ animationDelay: "0.1s" }}>
-        <div className="flex items-center gap-2">
-          <Key size={18} className="text-primary" />
-          <h2 className="font-display font-semibold">API Keys</h2>
-        </div>
-        <Separator className="bg-border/50" />
-        <div className="space-y-3">
-          <div>
-            <label className="text-xs text-muted-foreground block mb-1.5">TMDB API Key</label>
-            <Input type="password" placeholder="Enter your TMDB API key" value={tmdbKey} onChange={(e) => setTmdbKey(e.target.value)} className="bg-secondary/50 border-border/50 focus:border-primary/50" />
-          </div>
-          <div>
-            <label className="text-xs text-muted-foreground block mb-1.5">OMDB API Key</label>
-            <Input type="password" placeholder="Enter your OMDB API key" value={omdbKey} onChange={(e) => setOmdbKey(e.target.value)} className="bg-secondary/50 border-border/50 focus:border-primary/50" />
-          </div>
-          <Button size="sm" onClick={saveApiKeys} className="bg-primary text-primary-foreground hover:bg-primary/90">
-            Save API Keys
-          </Button>
-        </div>
-      </section>
-
-      {/* Statistics */}
-      <section className="glass-panel p-5 space-y-4 fade-up" style={{ animationDelay: "0.13s" }}>
-        <div className="flex items-center gap-2">
-          <BarChart3 size={18} className="text-primary" />
-          <h2 className="font-display font-semibold">Statistics</h2>
-        </div>
-        <Separator className="bg-border/50" />
-
-        <div className="grid grid-cols-2 gap-3">
-          {[
-            { icon: Film, value: movies.length, label: "Movies" },
-            { icon: Tv, value: series.length, label: "Series" },
-            { icon: TrendingUp, value: totalWatchTime > 0 ? `${Math.floor(totalWatchTime / 60)}h` : "—", label: "Watch Time" },
-            { icon: Star, value: avgRating, label: "Avg Rating" },
-          ].map((s) => (
-            <div key={s.label} className="glass-panel-strong p-4">
-              <div className="flex items-center gap-3">
-                <div className="p-2 rounded-xl bg-primary/10"><s.icon size={18} className="text-primary" /></div>
-                <div>
-                  <p className="text-xl font-bold font-display">{s.value}</p>
-                  <p className="text-xs text-muted-foreground">{s.label}</p>
+      {/* Update Available Popup */}
+      {updateAvailable && (
+        <Dialog open onOpenChange={() => setUpdateAvailable(null)}>
+          <DialogContent className="max-w-md border-primary/30 bg-background">
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2 text-primary">
+                <Zap className="w-5 h-5" /> New Version Available!
+              </DialogTitle>
+            </DialogHeader>
+            <div className="space-y-4">
+              <div className="flex items-center justify-between p-3 rounded-xl bg-primary/10 border border-primary/20">
+                <div className="text-sm">
+                  <span className="text-muted-foreground">Current: </span>
+                  <span className="font-mono font-bold">v{APP_VERSION}</span>
+                </div>
+                <div className="text-primary font-bold text-sm">→</div>
+                <div className="text-sm">
+                  <span className="text-muted-foreground">Latest: </span>
+                  <span className="font-mono font-bold text-primary">{updateAvailable.tag}</span>
                 </div>
               </div>
-            </div>
-          ))}
-        </div>
-
-        {/* Monthly Activity Chart */}
-        <div>
-          <p className="text-sm font-medium flex items-center gap-1.5 mb-3">
-            <TrendingUp size={14} className="text-primary" /> Monthly Activity
-          </p>
-          <div className="glass-panel-strong p-4">
-            {monthlyAdditions.length > 0 ? (
-              <ResponsiveContainer width="100%" height={180}>
-                <BarChart data={monthlyAdditions}>
-                  <XAxis dataKey="month" tick={{ fill: "hsl(215, 12%, 50%)", fontSize: 11 }} axisLine={false} tickLine={false} />
-                  <YAxis tick={{ fill: "hsl(215, 12%, 50%)", fontSize: 11 }} axisLine={false} tickLine={false} />
-                  <RechartsTooltip contentStyle={{ backgroundColor: "hsl(220, 18%, 10%)", border: "1px solid hsl(220, 15%, 18%)", borderRadius: "8px", color: "hsl(210, 20%, 92%)" }} />
-                  <Bar dataKey="movies" fill="hsl(209, 95%, 35%)" radius={[4, 4, 0, 0]} />
-                  <Bar dataKey="series" fill="hsl(260, 70%, 60%)" radius={[4, 4, 0, 0]} />
-                </BarChart>
-              </ResponsiveContainer>
-            ) : (
-              <div className="h-[120px] flex items-center justify-center text-muted-foreground text-sm">
-                <p>No data yet — start adding movies & series!</p>
-              </div>
-            )}
-          </div>
-        </div>
-
-        {/* Genre Breakdown */}
-        <div>
-          <p className="text-sm font-medium flex items-center gap-1.5 mb-3">
-            <Star size={14} className="text-primary" /> Genre Breakdown
-          </p>
-          <div className="glass-panel-strong p-4">
-            {genresBreakdown.length > 0 ? (
-              <div className="flex items-center gap-6">
-                <ResponsiveContainer width={120} height={120}>
-                  <PieChart>
-                    <Pie data={genresBreakdown} dataKey="count" nameKey="genre" cx="50%" cy="50%" innerRadius={30} outerRadius={50} strokeWidth={0}>
-                      {genresBreakdown.map((_, i) => (
-                        <Cell key={i} fill={GENRE_COLORS[i % GENRE_COLORS.length]} />
-                      ))}
-                    </Pie>
-                  </PieChart>
-                </ResponsiveContainer>
-                <div className="flex flex-col gap-1.5">
-                  {genresBreakdown.slice(0, 6).map((g, i) => (
-                    <div key={g.genre} className="flex items-center gap-2 text-xs">
-                      <span className="w-2 h-2 rounded-full" style={{ backgroundColor: GENRE_COLORS[i % GENRE_COLORS.length] }} />
-                      <span className="text-muted-foreground">{g.genre}</span>
-                      <span className="font-medium ml-auto">{g.count}</span>
-                    </div>
-                  ))}
+              {updateAvailable.body && (
+                <div className="rounded-xl border border-border bg-secondary/20 p-3 max-h-48 overflow-y-auto space-y-1.5">
+                  <p className="text-xs font-semibold text-foreground mb-2 flex items-center gap-1.5">
+                    <Tag size={11} className="text-primary" /> What's new
+                  </p>
+                  {parseChangelog(updateAvailable.body).slice(0, 10).map((entry, i) => {
+                    if (entry.type === "heading") return (
+                      <p key={i} className="text-xs font-semibold text-foreground pt-1">{getSectionIcon(entry.text)} {entry.text}</p>
+                    );
+                    return (
+                      <div key={i} className="flex gap-1.5 text-xs text-muted-foreground">
+                        <span className="text-primary flex-shrink-0">▸</span>
+                        <span>{entry.text}</span>
+                      </div>
+                    );
+                  })}
                 </div>
+              )}
+              <div className="flex gap-2">
+                {updateAvailable.tauriUpdate ? (
+                  <>
+                    <button 
+                      onClick={installUpdate}
+                      className="flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl bg-primary text-primary-foreground text-sm font-semibold hover:opacity-90 transition-opacity"
+                    >
+                      <DownloadCloud size={14} /> Install & Restart
+                    </button>
+                    <button onClick={() => setUpdateAvailable(null)}
+                      className="px-4 py-2.5 rounded-xl border border-border text-sm text-muted-foreground hover:bg-secondary transition-colors">
+                      Later
+                    </button>
+                  </>
+                ) : (
+                  <>
+                    <a href={updateAvailable.url} target="_blank" rel="noopener noreferrer"
+                      className="flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl bg-primary text-primary-foreground text-sm font-semibold hover:opacity-90 transition-opacity">
+                      <ExternalLink size={14} /> View Release on GitHub
+                    </a>
+                    <button onClick={() => setUpdateAvailable(null)}
+                      className="px-4 py-2.5 rounded-xl border border-border text-sm text-muted-foreground hover:bg-secondary transition-colors">
+                      Later
+                    </button>
+                  </>
+                )}
               </div>
-            ) : (
-              <div className="h-[100px] flex items-center justify-center text-muted-foreground text-sm">
-                <p>Genre stats will appear here</p>
-              </div>
-            )}
-          </div>
-        </div>
-      </section>
-
-      {/* Data Backup */}
-      <section className="glass-panel p-5 space-y-4 fade-up" style={{ animationDelay: "0.14s" }}>
-        <div className="flex items-center gap-2">
-          <Shield size={18} className="text-primary" />
-          <h2 className="font-display font-semibold">Data Backup</h2>
-        </div>
-        <Separator className="bg-border/50" />
-        <p className="text-xs text-muted-foreground">
-          Keep your collection safe. {collection.length} item{collection.length !== 1 ? "s" : ""} in collection.
-        </p>
-
-        {/* Full Backup Download */}
-        <div className="flex gap-2">
-          <Button
-            variant="outline"
-            size="sm"
-            className="flex-1 border-border/50 hover:bg-secondary/50"
-            onClick={() => handleExport("json")}
-          >
-            <Download size={14} className="mr-1.5" /> Full Backup
-          </Button>
-          <Button
-            variant="outline"
-            size="sm"
-            className="flex-1 border-border/50 hover:bg-secondary/50"
-            onClick={async () => {
-              const data = getCollection();
-              try {
-                await navigator.clipboard.writeText(JSON.stringify(data, null, 2));
-                toast({ title: `Copied ${data.length} items to clipboard` });
-              } catch {
-                toast({ title: "Clipboard access denied", variant: "destructive" });
-              }
-            }}
-          >
-            <Copy size={14} className="mr-1.5" /> Copy to Clipboard
-          </Button>
-        </div>
-      </section>
-
-      {/* Data Management */}
-      <section className="fade-up" style={{ animationDelay: "0.15s" }}>
-        <ImportExportButton />
-      </section>
-
-      {/* Appearance */}
-      <section className="glass-panel p-5 space-y-4 fade-up" style={{ animationDelay: "0.2s" }}>
-        <div className="flex items-center gap-2">
-          <Palette size={18} className="text-primary" />
-          <h2 className="font-display font-semibold">Appearance</h2>
-        </div>
-        <Separator className="bg-border/50" />
-
-        {/* Theme Toggle */}
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            {isDarkMode ? <Moon size={16} className="text-primary" /> : <Sun size={16} className="text-amber-400" />}
-            <div>
-              <p className="text-sm font-medium">{isDarkMode ? "Dark Mode" : "Light Mode"}</p>
-              <p className="text-xs text-muted-foreground">Switch between light and dark themes</p>
             </div>
-          </div>
-          <Switch checked={isDarkMode} onCheckedChange={toggleTheme} />
-        </div>
-
-        {/* Accent Color Presets */}
-        <div>
-          <p className="text-sm font-medium mb-2">Accent Color Presets</p>
-          <div className="flex gap-2">
-            {(Object.keys(ACCENT_PRESETS) as AccentColor[]).map((name) => (
-              <button
-                key={name}
-                onClick={() => setAccent(name)}
-                className={`w-8 h-8 rounded-full transition-all ${
-                  accent === name ? "ring-2 ring-offset-2 ring-offset-background ring-foreground scale-110" : "opacity-60 hover:opacity-100"
-                }`}
-                style={{ backgroundColor: `hsl(${ACCENT_PRESETS[name].primary})` }}
-                title={name.charAt(0).toUpperCase() + name.slice(1)}
-              />
-            ))}
-          </div>
-        </div>
-
-        {/* Custom Color Picker */}
-        <div>
-          <p className="text-sm font-medium mb-2">Custom Color</p>
-          <div className="flex items-center gap-3">
-            <input
-              type="color"
-              value={customColor}
-              onChange={(e) => handleCustomColor(e.target.value)}
-              className="w-10 h-10 rounded-lg cursor-pointer border-0 bg-transparent"
-            />
-            <div>
-              <p className="text-xs font-mono text-muted-foreground">{customColor}</p>
-              <p className="text-[11px] text-muted-foreground">Pick any color for the accent</p>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* Credits */}
-      <section className="glass-panel p-5 space-y-4 fade-up" style={{ animationDelay: "0.25s" }}>
-        <div className="flex items-center gap-2">
-          <Heart size={18} className="text-primary" />
-          <h2 className="font-display font-semibold">Credits</h2>
-        </div>
-        <Separator className="bg-border/50" />
-        <div className="text-center space-y-3 py-2">
-          <p className="text-sm">Developed by <span className="font-semibold text-primary">Yetemgeta Bekele</span> with <Heart size={12} className="inline text-red-400 fill-red-400" /></p>
-          <a
-            href="https://github.com/yetemgetaB/Movie-Tracker-Frontend"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-secondary/50 hover:bg-secondary/70 transition-colors text-sm"
-          >
-            <Github size={16} /> View on GitHub <ExternalLink size={12} />
-          </a>
-        </div>
-      </section>
-
-      {/* About */}
-      <section className="glass-panel p-5 fade-up" style={{ animationDelay: "0.28s" }}>
-        <div className="text-center space-y-4">
-          <div>
-            <p className="font-display font-semibold glow-text">Movie Tracker</p>
-            <p className="text-xs text-muted-foreground">v1.1.0 · Built with ❤️</p>
-          </div>
-          
-          {/* Update Section */}
-          <div className="flex items-center justify-center gap-3 pt-2 border-t">
-            <UpdateButton />
-          </div>
-        </div>
-      </section>
+          </DialogContent>
+        </Dialog>
+      )}
     </div>
   );
-};
-
-export default SettingsPage;
+}

@@ -287,3 +287,4 @@ docs/examples/
 # Development folders (keep main project clean)
 movie-tracker-combined/
 Sample Projects/
+.trash/

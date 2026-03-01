@@ -7,8 +7,8 @@ export interface CollectionMovie {
   poster: string;
   genre: string;
   year: string;
-  seasons: number; // 0 for movies
-  episodes: number; // 0 for movies
+  seasons: number;
+  episodes: number;
   director: string;
   stars: string;
   rated: string;
@@ -20,6 +20,9 @@ export interface CollectionMovie {
   status: string;
   nextSeason: string;
   addedAt: string;
+  notes?: string;
+  moodTags?: string[];
+  runtime?: number;
 }
 
 export interface CollectionSeries {
@@ -42,25 +45,26 @@ export interface CollectionSeries {
   status: string;
   nextSeason: string;
   addedAt: string;
+  notes?: string;
+  moodTags?: string[];
+  runtime?: number;
 }
 
 export type CollectionItem = CollectionMovie | CollectionSeries;
 
 const STORAGE_KEY = "movie_tracker_collection";
 
-// --- Local helpers ---
 function getLocalCollection(): CollectionItem[] {
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
     if (!raw) return [];
     const parsed = JSON.parse(raw);
-    // Basic validation
     if (!Array.isArray(parsed)) return [];
-    return parsed.filter(item => 
-      item && 
-      typeof item === 'object' && 
-      typeof item.id === 'number' && 
-      typeof item.type === 'string' && 
+    return parsed.filter(item =>
+      item &&
+      typeof item === 'object' &&
+      typeof item.id === 'number' &&
+      typeof item.type === 'string' &&
       ['movie', 'series'].includes(item.type)
     );
   } catch (error) {
@@ -73,38 +77,33 @@ function saveLocalCollection(items: CollectionItem[]): void {
   localStorage.setItem(STORAGE_KEY, JSON.stringify(items));
 }
 
-// --- Public API (used by components) ---
-
 export function getCollection(): CollectionItem[] {
   return getLocalCollection();
 }
 
 export function addToCollection(item: CollectionItem): void {
-  const collection = getLocalCollection();
-  const exists = collection.find((c) => c.id === item.id && c.type === item.type);
-  if (exists) return;
-  // Validate item structure
-  if (!item.id || !item.type || !item.title || !item.addedAt) {
-    console.error('Invalid item structure:', item);
-    return;
+  const items = getLocalCollection();
+  const existing = items.findIndex(i => i.id === item.id && i.type === item.type);
+  if (existing >= 0) {
+    items[existing] = { ...items[existing], ...item };
+  } else {
+    items.push(item);
   }
-  collection.unshift(item);
-  saveLocalCollection(collection);
+  saveLocalCollection(items);
 }
 
-export function removeFromCollection(id: number, type: "movie" | "series"): void {
-  const collection = getLocalCollection().filter((c) => !(c.id === id && c.type === type));
-  saveLocalCollection(collection);
+export function removeFromCollection(id: number): void {
+  const items = getLocalCollection().filter(i => i.id !== id);
+  saveLocalCollection(items);
 }
 
-export function updateCollectionItem(
-  id: number,
-  type: "movie" | "series",
-  updates: Partial<CollectionItem>
-): void {
-  const collection = getLocalCollection();
-  const idx = collection.findIndex((c) => c.id === id && c.type === type);
-  if (idx === -1) return;
-  collection[idx] = { ...collection[idx], ...updates } as CollectionItem;
-  saveLocalCollection(collection);
+export function updateCollectionItem(id: number, updates: Partial<CollectionItem>): void {
+  const items = getLocalCollection().map(item =>
+    item.id === id ? { ...item, ...updates } : item
+  );
+  saveLocalCollection(items);
+}
+
+export function isInCollection(id: number): boolean {
+  return getLocalCollection().some(i => i.id === id);
 }

@@ -4,16 +4,29 @@ const TMDB_BASE = "https://api.themoviedb.org/3";
 const OMDB_BASE = "https://www.omdbapi.com";
 const TMDB_IMG = "https://image.tmdb.org/t/p";
 
-function getApiKey(keyName: string): string {
-  const key = localStorage.getItem(`movie_tracker_${keyName}`);
-  if (!key) {
-    throw new Error(`API key not found. Please set your ${keyName} in Settings.`);
-  }
-  return key;
+export function getApiKey(keyName: string): string | null {
+  // Support both new (movie_tracker_*) and legacy key names
+  return (
+    localStorage.getItem(`movie_tracker_${keyName}`) ||
+    localStorage.getItem(keyName) ||
+    null
+  );
 }
 
-const getTmdbKey = () => getApiKey('tmdb_key');
-const getOmdbKey = () => getApiKey('omdb_key');
+export function hasTmdbKey(): boolean { return !!(getApiKey('tmdb_api_key') || getApiKey('tmdb_key')); }
+export function hasOmdbKey(): boolean { return !!(getApiKey('omdb_api_key') || getApiKey('omdb_key')); }
+export function hasTvdbKey(): boolean { return !!(getApiKey('tvdb_api_key') || getApiKey('tvdb_key')); }
+
+const getTmdbKey = () => {
+  const key = getApiKey('tmdb_api_key') || getApiKey('tmdb_key');
+  if (!key) throw new Error(`TMDB API key not found. Please set it in Settings.`);
+  return key;
+};
+const getOmdbKey = () => {
+  const key = getApiKey('omdb_api_key') || getApiKey('omdb_key');
+  if (!key) throw new Error(`OMDB API key not found. Please set it in Settings.`);
+  return key;
+};
 
 export const img = (path: string | null, size = "w500") =>
   path ? `${TMDB_IMG}/${size}${path}` : "/placeholder.svg";
@@ -101,6 +114,21 @@ export interface OmdbDetail {
   Response: string;
 }
 
+export interface OmdbEpisode {
+  Title: string;
+  Released: string;
+  Episode: string;
+  imdbRating: string;
+  imdbID: string;
+}
+
+export interface OmdbSeason {
+  Title: string;
+  Season: string;
+  Episodes: OmdbEpisode[];
+  Response: string;
+}
+
 // --- Movie API ---
 export const tmdbApi = {
   trending: () =>
@@ -111,8 +139,15 @@ export const tmdbApi = {
     tmdb<{ results: TmdbMovie[] }>("/movie/top_rated").then((r) => r.results),
   nowPlaying: () =>
     tmdb<{ results: TmdbMovie[] }>("/movie/now_playing").then((r) => r.results),
-  search: (query: string) =>
-    tmdb<{ results: TmdbMovie[] }>("/search/movie", { query }).then((r) => r.results),
+  upcoming: () =>
+    tmdb<{ results: TmdbMovie[] }>("/movie/upcoming").then((r) => r.results),
+  search: (query: string, page = 1) =>
+    tmdb<{ results: TmdbMovie[]; total_results: number; total_pages: number }>(
+      "/search/movie",
+      { query, page: String(page) }
+    ),
+  searchByPerson: (personId: number) =>
+    tmdb<{ cast: TmdbMovie[] }>(`/person/${personId}/movie_credits`).then(r => r.cast),
   details: (id: number) => tmdb<TmdbMovieDetail>(`/movie/${id}`),
   credits: (id: number) => tmdb<TmdbCredits>(`/movie/${id}/credits`),
   videos: (id: number) =>
@@ -121,12 +156,38 @@ export const tmdbApi = {
     tmdb<TmdbKeywords>(`/movie/${id}/keywords`).then((r) => r.keywords),
   similar: (id: number) =>
     tmdb<{ results: TmdbMovie[] }>(`/movie/${id}/similar`).then((r) => r.results),
+  recommendations: (id: number) =>
+    tmdb<{ results: TmdbMovie[] }>(`/movie/${id}/recommendations`).then((r) => r.results),
+  discover: (params: Record<string, string>) =>
+    tmdb<{ results: TmdbMovie[] }>("/discover/movie", params).then((r) => r.results),
   discoverByKeyword: (keywordId: number) =>
     tmdb<{ results: TmdbMovie[] }>("/discover/movie", { with_keywords: String(keywordId) }).then((r) => r.results),
+  searchPerson: (query: string) =>
+    tmdb<{ results: { id: number; name: string; profile_path: string | null; known_for_department: string }[] }>(
+      "/search/person", { query }
+    ).then(r => r.results),
+  personDetails: (id: number) =>
+    tmdb<{ id: number; name: string; biography: string; birthday: string | null; profile_path: string | null; known_for_department: string }>(`/person/${id}`),
+  genreList: () =>
+    tmdb<{ genres: { id: number; name: string }[] }>("/genre/movie/list").then(r => r.genres),
+  tvGenreList: () =>
+    tmdb<{ genres: { id: number; name: string }[] }>("/genre/tv/list").then(r => r.genres),
+  upcomingReleases: (startDate: string, endDate: string) =>
+    tmdb<{ results: TmdbMovie[] }>("/discover/movie", {
+      "primary_release_date.gte": startDate,
+      "primary_release_date.lte": endDate,
+      sort_by: "primary_release_date.asc",
+    }).then(r => r.results),
 };
 
 export const omdbApi = {
   getByImdbId: (imdbId: string) => omdb<OmdbDetail>({ i: imdbId }),
+  getSeasonRatings: (title: string, season: number, imdbId?: string) => {
+    const params: Record<string, string> = { Season: String(season) };
+    if (imdbId) params.i = imdbId;
+    else params.t = title;
+    return omdb<OmdbSeason>(params);
+  },
 };
 
 // --- Series ---
@@ -194,8 +255,15 @@ export const tmdbSeriesApi = {
     tmdb<{ results: TmdbSeries[] }>("/trending/tv/week").then((r) => r.results),
   popular: () =>
     tmdb<{ results: TmdbSeries[] }>("/tv/popular").then((r) => r.results),
-  search: (query: string) =>
-    tmdb<{ results: TmdbSeries[] }>("/search/tv", { query }).then((r) => r.results),
+  topRated: () =>
+    tmdb<{ results: TmdbSeries[] }>("/tv/top_rated").then((r) => r.results),
+  airingToday: () =>
+    tmdb<{ results: TmdbSeries[] }>("/tv/airing_today").then((r) => r.results),
+  search: (query: string, page = 1) =>
+    tmdb<{ results: TmdbSeries[]; total_results: number; total_pages: number }>(
+      "/search/tv",
+      { query, page: String(page) }
+    ),
   details: (id: number) =>
     tmdb<TmdbSeriesDetail>(`/tv/${id}`, { append_to_response: "external_ids" }),
   credits: (id: number) => tmdb<TmdbCredits>(`/tv/${id}/credits`),
@@ -203,8 +271,18 @@ export const tmdbSeriesApi = {
     tmdb<TmdbVideos>(`/tv/${id}/videos`).then((r) => r.results),
   similar: (id: number) =>
     tmdb<{ results: TmdbSeries[] }>(`/tv/${id}/similar`).then((r) => r.results),
+  recommendations: (id: number) =>
+    tmdb<{ results: TmdbSeries[] }>(`/tv/${id}/recommendations`).then((r) => r.results),
   seasonDetails: (seriesId: number, seasonNumber: number) =>
     tmdb<TmdbSeasonDetail>(`/tv/${seriesId}/season/${seasonNumber}`),
   seasonVideos: (seriesId: number, seasonNumber: number) =>
     tmdb<TmdbVideos>(`/tv/${seriesId}/season/${seasonNumber}/videos`).then((r) => r.results),
+  discover: (params: Record<string, string>) =>
+    tmdb<{ results: TmdbSeries[] }>("/discover/tv", params).then((r) => r.results),
+  upcomingEpisodes: (startDate: string, endDate: string) =>
+    tmdb<{ results: TmdbSeries[] }>("/discover/tv", {
+      "air_date.gte": startDate,
+      "air_date.lte": endDate,
+      sort_by: "first_air_date.asc",
+    }).then(r => r.results),
 };
