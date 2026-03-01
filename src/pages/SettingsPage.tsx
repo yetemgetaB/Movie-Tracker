@@ -895,8 +895,8 @@ export default function SettingsPage() {
             {/* App card */}
             <div className="rounded-xl border border-border bg-card p-6 space-y-4">
               <div className="flex items-center gap-4">
-                <div className="w-14 h-14 rounded-2xl bg-primary/10 flex items-center justify-center">
-                  <span className="text-2xl">🎬</span>
+                <div className="w-14 h-14 rounded-2xl bg-primary/10 flex items-center justify-center overflow-hidden">
+                  <img src="/app-icon.png" alt="Movie Tracker" className="w-full h-full object-cover" />
                 </div>
                 <div>
                   <h3 className="text-lg font-bold text-foreground">Movie Tracker</h3>
