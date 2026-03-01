@@ -1,19 +1,19 @@
 {
-  "version": "1.2.2",
-  "notes": "� Enhanced Auto-Update System\n\n✨ **Major Improvements:**\n- **Fixed Auto-Update** - Now downloads and installs automatically\n- **Better Update Flow** - Improved download and install process\n- **Enhanced Feedback** - Better status messages during update\n- **Robust Error Handling** - Better error recovery\n\n🔧 **Technical Fixes:**\n- **Tauri Updater** - Proper integration with Tauri update system\n- **updates.json** - Now accessible on main branch\n- **Dynamic Import** - Fixed updater import issues\n- **Update Detection** - Better version comparison\n\n📦 **Update Process:**\n1. Check for Updates → 2. Download → 3. Install → 4. Restart\n5. No more manual GitHub redirects!\n\n🎯 **Ready for Testing:**\n- Install v1.2.1 → Check for Updates → Auto-install v1.2.2\n- Full seamless update experience\n- No manual intervention required",
-  "pub_date": "2026-03-01T01:30:00Z",
+  "version": "1.2.3",
+  "notes": "🎨 App Icon & Visual Improvements\n\n✨ **New Features:**\n- **Updated App Icon** - Fresh new app icon design\n- **Enhanced Branding** - Better visual identity\n- **Improved Meta Tags** - Better SEO and sharing\n- **Professional Look** - More polished appearance\n\n🎨 **Visual Changes:**\n- **Settings Page** - Updated app icon display\n- **HTML Meta** - Enhanced titles and descriptions\n- **Consistent Branding** - Unified app identity\n- **Better Presentation** - Professional appearance\n\n� **Platform Support:**\n- **All Icon Sizes** - Complete icon set for all platforms\n- **Mobile Ready** - Android and iOS icons included\n- **Desktop Support** - Windows, macOS, Linux icons\n- **Web Optimized** - Favicon and meta tags\n\n🎯 **Enhanced Experience:**\n- Better visual recognition\n- Professional app appearance\n- Consistent branding across all platforms\n- Improved user perception\n\n🚀 **Ready for Production!**",
+  "pub_date": "2026-03-01T02:00:00Z",
   "platforms": {
     "windows": {
       "signature": "",
-      "url": "https://github.com/yetemgetaB/Movie-Tracker-Frontend/releases/download/v1.2.2/Movie.Tracker.1.2.2.x64.msi"
+      "url": "https://github.com/yetemgetaB/Movie-Tracker-Frontend/releases/download/v1.2.3/Movie.Tracker.1.2.3.x64.msi"
     },
     "darwin": {
       "signature": "",
-      "url": "https://github.com/yetemgetaB/Movie-Tracker-Frontend/releases/download/v1.2.2/Movie.Tracker.1.2.2.dmg"
+      "url": "https://github.com/yetemgetaB/Movie-Tracker-Frontend/releases/download/v1.2.3/Movie.Tracker.1.2.3.dmg"
     },
     "linux": {
       "signature": "",
-      "url": "https://github.com/yetemgetaB/Movie-Tracker-Frontend/releases/download/v1.2.2/Movie.Tracker.1.2.2.AppImage"
+      "url": "https://github.com/yetemgetaB/Movie-Tracker-Frontend/releases/download/v1.2.3/Movie.Tracker.1.2.3.AppImage"
     }
   }
 }

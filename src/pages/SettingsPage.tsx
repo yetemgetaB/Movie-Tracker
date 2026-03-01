@@ -13,7 +13,7 @@ import { useToast } from "@/hooks/use-toast";
 import { check } from "@tauri-apps/plugin-updater";
 import { relaunch } from "@tauri-apps/plugin-process";
 
-const APP_VERSION = "1.2.2";
+const APP_VERSION = "1.2.3";
 const GITHUB_REPO = "yetemgetaB/Movie-Tracker";
 const GITHUB_URL = `https://github.com/${GITHUB_REPO}`;
 
