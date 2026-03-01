@@ -13,7 +13,7 @@ import { useToast } from "@/hooks/use-toast";
 import { check } from "@tauri-apps/plugin-updater";
 import { relaunch } from "@tauri-apps/plugin-process";
 
-const APP_VERSION = "1.2.1";
+const APP_VERSION = "1.2.2";
 const GITHUB_REPO = "yetemgetaB/Movie-Tracker";
 const GITHUB_URL = `https://github.com/${GITHUB_REPO}`;
 
@@ -456,7 +456,7 @@ export default function SettingsPage() {
       if (window.__TAURI__) {
         // Use Tauri updater
         const { update, shouldUpdate } = await check();
-        if (shouldUpdate) {
+        if (shouldUpdate && update) {
           setUpdateStatus(`🆕 Update available: ${update.version}`);
           setUpdateAvailable({ 
             tag: `v${update.version}`, 
@@ -494,18 +494,26 @@ export default function SettingsPage() {
     if (!updateAvailable?.tauriUpdate) return;
     
     try {
-      setUpdateStatus("📦 Installing update...");
+      setUpdateStatus("📦 Downloading update...");
       // Import install dynamically
       const { install } = await import("@tauri-apps/plugin-updater");
+      
+      setUpdateStatus("⚡ Installing update...");
       await install(updateAvailable.tauriUpdate);
-      setUpdateStatus("✅ Update installed! Restarting...");
-      await relaunch();
+      
+      setUpdateStatus("✅ Update installed! Restarting app...");
+      
+      // Small delay before restart to show success message
+      setTimeout(async () => {
+        await relaunch();
+      }, 1500);
+      
     } catch (error) {
       console.error('Update installation failed:', error);
       setUpdateStatus("❌ Failed to install update.");
       toast({ 
         title: "Update Failed", 
-        description: "Could not install the update. Please try again.", 
+        description: "Could not install the update. Please try again or download manually.", 
         variant: "destructive" 
       });
     }

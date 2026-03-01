@@ -1,19 +1,19 @@
 {
-  "version": "1.2.1",
-  "notes": "🔧 Minor Fixes & Keyboard Shortcuts\n\n✨ **New Features:**\n- **Working Keyboard Shortcuts** - All shortcuts now functional\n- **Enhanced Navigation** - Better keyboard controls\n\n🔧 **Fixes:**\n- **Keyboard Shortcuts** - Added working keyboard shortcuts functionality\n- **Dynamic Import** - Fixed Tauri updater import warning\n- **Enhanced User Experience** - Better navigation controls\n\n⌨️ **Working Shortcuts:**\n- **Ctrl+K** - Open search (when implemented)\n- **Alt+H/M/S** - Navigate to Home/Movies/Series\n- **Escape** - Close dialogs and go back\n- **F/F11** - Toggle fullscreen\n\n🚀 **Tauri Features:**\n- Auto-update functionality working\n- Keyboard shortcuts functional in desktop app\n- Better desktop integration\n\n� **Ready for Testing!**",
-  "pub_date": "2026-03-01T00:30:00Z",
+  "version": "1.2.2",
+  "notes": "� Enhanced Auto-Update System\n\n✨ **Major Improvements:**\n- **Fixed Auto-Update** - Now downloads and installs automatically\n- **Better Update Flow** - Improved download and install process\n- **Enhanced Feedback** - Better status messages during update\n- **Robust Error Handling** - Better error recovery\n\n🔧 **Technical Fixes:**\n- **Tauri Updater** - Proper integration with Tauri update system\n- **updates.json** - Now accessible on main branch\n- **Dynamic Import** - Fixed updater import issues\n- **Update Detection** - Better version comparison\n\n📦 **Update Process:**\n1. Check for Updates → 2. Download → 3. Install → 4. Restart\n5. No more manual GitHub redirects!\n\n🎯 **Ready for Testing:**\n- Install v1.2.1 → Check for Updates → Auto-install v1.2.2\n- Full seamless update experience\n- No manual intervention required",
+  "pub_date": "2026-03-01T01:30:00Z",
   "platforms": {
     "windows": {
       "signature": "",
-      "url": "https://github.com/yetemgetaB/Movie-Tracker-Frontend/releases/download/v1.2.1/Movie.Tracker.1.2.1.x64.msi"
+      "url": "https://github.com/yetemgetaB/Movie-Tracker-Frontend/releases/download/v1.2.2/Movie.Tracker.1.2.2.x64.msi"
     },
     "darwin": {
       "signature": "",
-      "url": "https://github.com/yetemgetaB/Movie-Tracker-Frontend/releases/download/v1.2.1/Movie.Tracker.1.2.1.dmg"
+      "url": "https://github.com/yetemgetaB/Movie-Tracker-Frontend/releases/download/v1.2.2/Movie.Tracker.1.2.2.dmg"
     },
     "linux": {
       "signature": "",
-      "url": "https://github.com/yetemgetaB/Movie-Tracker-Frontend/releases/download/v1.2.1/Movie.Tracker.1.2.1.AppImage"
+      "url": "https://github.com/yetemgetaB/Movie-Tracker-Frontend/releases/download/v1.2.2/Movie.Tracker.1.2.2.AppImage"
     }
   }
 }
