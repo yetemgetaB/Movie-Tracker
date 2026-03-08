@@ -925,7 +925,7 @@ export default function SettingsPage() {
             <div className="rounded-xl border border-border bg-card p-4 space-y-4">
               <div>
                 <div className="font-semibold text-foreground">Reorder & Visibility</div>
-                <div className="text-xs text-muted-foreground">Drag to reorder, toggle to show/hide. Hidden items appear on hover (like Windows taskbar).</div>
+                <div className="text-xs text-muted-foreground">Drag to reorder, toggle to show/hide. Hidden items are completely removed from the nav.</div>
               </div>
               <div className="space-y-1">
                 {navSettings.order.map((path, index) => {
