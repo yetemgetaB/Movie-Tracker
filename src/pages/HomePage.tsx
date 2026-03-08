@@ -579,6 +579,38 @@ const HomePage = () => {
 
       {/* Rows */}
       <div className="pt-4">
+        {/* Mood Filters */}
+        {!showOffline && (
+          <div className="px-6 mb-6">
+            <div className="flex gap-2 overflow-x-auto scrollbar-hide py-1">
+              {MOOD_FILTERS.map(mood => (
+                <button
+                  key={mood.label}
+                  onClick={() => setActiveMood(activeMood === mood.label ? null : mood.label)}
+                  className={`flex-shrink-0 px-4 py-2 rounded-full text-xs font-medium transition-all flex items-center gap-1.5 ${
+                    activeMood === mood.label
+                      ? "bg-primary text-primary-foreground"
+                      : "bg-secondary/60 text-muted-foreground hover:bg-secondary"
+                  }`}
+                >
+                  <span>{mood.emoji}</span> {mood.label}
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Mood Results */}
+        {activeMood && moodMovies.length > 0 && (
+          <ContentRow
+            title={`${MOOD_FILTERS.find(m => m.label === activeMood)?.emoji} ${activeMood} Movies`}
+            badge="Mood"
+            items={mapMovies(moodMovies)}
+            type="movie"
+            onSelectItem={handleSelectItem}
+          />
+        )}
+
         {/* Continue Watching */}
         {continueWatching.length > 0 && (
           <ContentRow
@@ -589,7 +621,7 @@ const HomePage = () => {
               title: p.title,
               poster: p.poster,
               backdrop: null,
-              year: "",
+              year: p.currentSeason ? `S${p.currentSeason}E${p.currentEpisode}` : "",
               rating: 0,
             }))}
             type="movie"
@@ -615,6 +647,36 @@ const HomePage = () => {
           <>
             <ContentRow title="Trending Now" badge="This Week" items={mapMovies(trendingMovies)} type="movie" onSelectItem={handleSelectItem} />
             <ContentRow title="Trending Series" items={mapSeries(trendingSeries)} type="series" onSelectItem={handleSelectItem} />
+
+            {/* Recommended For You */}
+            {recommendedMovies.length > 0 && (
+              <ContentRow
+                title="Recommended For You"
+                badge="Personalized"
+                items={recommendedMovies.map(m => ({
+                  id: m.id, title: m.title, poster: m.poster_path, backdrop: m.backdrop_path,
+                  year: m.release_date?.slice(0, 4) || "", rating: m.vote_average,
+                  overview: m.overview, genre_ids: m.genre_ids,
+                }))}
+                type="movie"
+                onSelectItem={handleSelectItem}
+              />
+            )}
+
+            {recommendedSeries.length > 0 && (
+              <ContentRow
+                title="Series You Might Like"
+                badge="Personalized"
+                items={recommendedSeries.map(s => ({
+                  id: s.id, title: s.name, poster: s.poster_path, backdrop: s.backdrop_path,
+                  year: s.first_air_date?.slice(0, 4) || "", rating: s.vote_average,
+                  overview: s.overview, genre_ids: s.genre_ids,
+                }))}
+                type="series"
+                onSelectItem={handleSelectItem}
+              />
+            )}
+
             <ContentRow title="Top Rated Movies" items={mapMovies(topRatedMovies)} type="movie" onSelectItem={handleSelectItem} />
             <ContentRow title="Now Playing in Theaters" items={mapMovies(nowPlayingMovies)} type="movie" onSelectItem={handleSelectItem} />
             <ContentRow title="Popular Series" items={mapSeries(popularSeries)} type="series" onSelectItem={handleSelectItem} />
