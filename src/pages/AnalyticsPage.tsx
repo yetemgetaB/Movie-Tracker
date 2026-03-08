@@ -285,6 +285,8 @@ const AnalyticsPage = () => {
           <p className="text-xs text-muted-foreground mt-0.5">Your complete viewing insights</p>
         </div>
         <div className="flex gap-2">
+          <ShareProfileCard />
+          <TopFourGrid />
           <Button size="sm" variant="outline" onClick={handleShareStats} className="gap-1.5">
             <Share2 size={13} /> Share
           </Button>
