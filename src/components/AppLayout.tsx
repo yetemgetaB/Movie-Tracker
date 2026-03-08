@@ -1,7 +1,8 @@
-import { ReactNode, useEffect } from "react";
+import { ReactNode, useEffect, useState } from "react";
 import { useLocation } from "react-router-dom";
 import BottomNav from "./BottomNav";
 import NotificationBell from "./NotificationBell";
+import Titlebar from "./Titlebar";
 import { initAccentColor } from "@/hooks/use-accent-color";
 import { initPlugins } from "@/lib/plugins";
 import { checkAchievements } from "@/lib/achievements";
@@ -13,6 +14,7 @@ interface AppLayoutProps {
 
 const AppLayout = ({ children }: AppLayoutProps) => {
   const location = useLocation();
+  const [navVisible, setNavVisible] = useState(true);
 
   useEffect(() => {
     initAccentColor();
@@ -20,7 +22,6 @@ const AppLayout = ({ children }: AppLayoutProps) => {
     applyStoredZoom();
     initPlugins();
 
-    // Check achievements on navigation
     const { newlyUnlocked } = checkAchievements();
     newlyUnlocked.forEach((a) => {
       toast({ title: `${a.icon} Achievement Unlocked!`, description: `${a.icon} ${a.id.replace(/_/g, " ")}` });
@@ -29,16 +30,13 @@ const AppLayout = ({ children }: AppLayoutProps) => {
 
   return (
     <div className="min-h-screen mica-bg">
-      {/* Skip to content for accessibility */}
       <a href="#main-content" className="sr-only focus:not-sr-only focus:absolute focus:top-2 focus:left-2 focus:z-[100] focus:px-4 focus:py-2 focus:bg-primary focus:text-primary-foreground focus:rounded-lg">
         Skip to content
       </a>
-      {/* Notification bell - fixed top right */}
-      <div className="fixed top-3 right-3 z-40">
-        <NotificationBell />
-      </div>
-      <main id="main-content" className="pb-28" role="main">{children}</main>
-      <BottomNav />
+      <Titlebar />
+      <NotificationBell visible={navVisible} />
+      <main id="main-content" className="pt-9 pb-28" role="main">{children}</main>
+      <BottomNav onVisibilityChange={setNavVisible} />
     </div>
   );
 };
@@ -60,7 +58,6 @@ export function applyStoredTheme() {
     r.style.setProperty("--border", "220 15% 85%");
     r.style.setProperty("--input", "220 15% 85%");
     r.style.setProperty("--primary-foreground", "0 0% 100%");
-    // Light-mode custom tokens
     r.style.setProperty("--glass", "0 0% 100% / 0.7");
     r.style.setProperty("--glass-border", "220 15% 80% / 0.5");
     r.style.setProperty("--glow-soft", "209 95% 50% / 0.15");
@@ -82,7 +79,6 @@ export function applyStoredTheme() {
     r.style.setProperty("--border", "220 15% 18%");
     r.style.setProperty("--input", "220 15% 18%");
     r.style.setProperty("--primary-foreground", "210 20% 95%");
-    // Dark-mode custom tokens
     r.style.setProperty("--glass", "220 18% 10% / 0.6");
     r.style.setProperty("--glass-border", "220 15% 25% / 0.4");
     r.style.setProperty("--glow-soft", "209 95% 35% / 0.2");

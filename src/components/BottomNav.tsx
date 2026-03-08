@@ -57,6 +57,10 @@ const BottomNav = ({ onVisibilityChange }: { onVisibilityChange?: (visible: bool
 
   const visible = autoHideVisible || navHovered;
 
+  useEffect(() => {
+    onVisibilityChange?.(visible);
+  }, [visible, onVisibilityChange]);
+
 function getGlowStyle(glowColor: string): React.CSSProperties {
   if (glowColor === "accent") return {};
   return {
