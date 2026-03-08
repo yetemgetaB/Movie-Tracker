@@ -6,13 +6,15 @@ import {
 } from 'recharts';
 import {
   BarChart3, Film, Tv, Star, Clock, Calendar, TrendingUp, Award, Target,
-  Flame, CheckCircle, Download, Tag, Zap
+  Flame, CheckCircle, Download, Tag, Zap, Trophy, Share2
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
 import { getCollection } from '@/lib/collection';
+import { getAllAchievementsWithStatus } from '@/lib/achievements';
+import { generateStatsText, shareContent, generateShareCard, shareImage } from '@/lib/sharing';
 import { toast } from '@/hooks/use-toast';
 
 const COLORS = [
