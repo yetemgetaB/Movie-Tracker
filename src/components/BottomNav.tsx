@@ -88,8 +88,8 @@ function getGlowStyle(glowColor: string): React.CSSProperties {
     <nav
       className={`${getPositionClasses()} nav-glow rounded-2xl ${isVertical ? "px-2.5 py-3" : "px-3 py-2.5"}`}
       style={getGlowStyle(settings.glowColor)}
-      onMouseEnter={() => { setNavHovered(true); setShowHidden(true); }}
-      onMouseLeave={() => { setNavHovered(false); setShowHidden(false); }}
+      onMouseEnter={() => setNavHovered(true)}
+      onMouseLeave={() => setNavHovered(false)}
     >
       <ul className={`flex items-center ${isVertical ? "flex-col" : ""} gap-0.5`}>
         {visibleItems.map((path) => {
