@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from "react";
-import { Play, Info, ChevronLeft, ChevronRight, Volume2, VolumeX, AlertCircle, Plus, Star, WifiOff } from "lucide-react";
+import { Play, Info, ChevronLeft, ChevronRight, Volume2, VolumeX, AlertCircle, Plus, Star, WifiOff, Sparkles, Heart, Zap, Brain, Laugh, Ghost } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -8,6 +8,7 @@ import { tmdbApi, tmdbSeriesApi, img, imgOriginal, hasTmdbKey, type TmdbMovie, t
 import { useNavigate } from "react-router-dom";
 import { getCollection } from "@/lib/collection";
 import { getWatchProgress } from "@/lib/watchProgress";
+import { getRecommendedMovies, getRecommendedSeries } from "@/lib/recommendations";
 import { toast } from "@/hooks/use-toast";
 import { useOnlineStatus } from "@/hooks/use-online-status";
 import MovieDetailView from "@/components/MovieDetailView";
@@ -364,11 +365,21 @@ const OfflineBanner = () => (
   </div>
 );
 
+// ─── Mood Filters ─────────────────────────────────────────────────────────────
+const MOOD_FILTERS = [
+  { label: "Feel Good", emoji: "😊", icon: Heart, genres: "35,10751", color: "text-pink-400" },
+  { label: "Thrilling", emoji: "😰", icon: Zap, genres: "53,80", color: "text-yellow-400" },
+  { label: "Mind-Bending", emoji: "🧠", icon: Brain, genres: "878,9648", color: "text-purple-400" },
+  { label: "Laugh Out Loud", emoji: "😂", icon: Laugh, genres: "35", color: "text-green-400" },
+  { label: "Spooky", emoji: "👻", icon: Ghost, genres: "27", color: "text-orange-400" },
+];
+
 // ── Main HomePage ─────────────────────────────────────────────────────────────
 const HomePage = () => {
   const navigate = useNavigate();
   const [selectedItem, setSelectedItem] = useState<{ id: number; type: "movie" | "series" } | null>(null);
   const [heroIndex, setHeroIndex] = useState(0);
+  const [activeMood, setActiveMood] = useState<string | null>(null);
   const hasKey = hasTmdbKey();
   const { isOnline } = useOnlineStatus();
 
@@ -411,6 +422,30 @@ const HomePage = () => {
     queryKey: ["popular-series"],
     queryFn: () => tmdbSeriesApi.popular(),
     enabled: hasKey && isOnline,
+    staleTime: 1000 * 60 * 10,
+  });
+
+  // Recommendations
+  const { data: recommendedMovies = [] } = useQuery({
+    queryKey: ["recommended-movies"],
+    queryFn: () => getRecommendedMovies(),
+    enabled: hasKey && isOnline && getCollection().length > 0,
+    staleTime: 1000 * 60 * 15,
+  });
+
+  const { data: recommendedSeries = [] } = useQuery({
+    queryKey: ["recommended-series"],
+    queryFn: () => getRecommendedSeries(),
+    enabled: hasKey && isOnline && getCollection().length > 0,
+    staleTime: 1000 * 60 * 15,
+  });
+
+  // Mood-based discover
+  const moodGenres = MOOD_FILTERS.find(m => m.label === activeMood)?.genres || "";
+  const { data: moodMovies = [] } = useQuery({
+    queryKey: ["mood-movies", activeMood],
+    queryFn: () => tmdbApi.discover({ with_genres: moodGenres, sort_by: "vote_average.desc", "vote_count.gte": "100" }),
+    enabled: !!activeMood && hasKey && isOnline,
     staleTime: 1000 * 60 * 10,
   });
 
@@ -544,6 +579,38 @@ const HomePage = () => {
 
       {/* Rows */}
       <div className="pt-4">
+        {/* Mood Filters */}
+        {!showOffline && (
+          <div className="px-6 mb-6">
+            <div className="flex gap-2 overflow-x-auto scrollbar-hide py-1">
+              {MOOD_FILTERS.map(mood => (
+                <button
+                  key={mood.label}
+                  onClick={() => setActiveMood(activeMood === mood.label ? null : mood.label)}
+                  className={`flex-shrink-0 px-4 py-2 rounded-full text-xs font-medium transition-all flex items-center gap-1.5 ${
+                    activeMood === mood.label
+                      ? "bg-primary text-primary-foreground"
+                      : "bg-secondary/60 text-muted-foreground hover:bg-secondary"
+                  }`}
+                >
+                  <span>{mood.emoji}</span> {mood.label}
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Mood Results */}
+        {activeMood && moodMovies.length > 0 && (
+          <ContentRow
+            title={`${MOOD_FILTERS.find(m => m.label === activeMood)?.emoji} ${activeMood} Movies`}
+            badge="Mood"
+            items={mapMovies(moodMovies)}
+            type="movie"
+            onSelectItem={handleSelectItem}
+          />
+        )}
+
         {/* Continue Watching */}
         {continueWatching.length > 0 && (
           <ContentRow
@@ -554,7 +621,7 @@ const HomePage = () => {
               title: p.title,
               poster: p.poster,
               backdrop: null,
-              year: "",
+              year: p.currentSeason ? `S${p.currentSeason}E${p.currentEpisode}` : "",
               rating: 0,
             }))}
             type="movie"
@@ -580,6 +647,36 @@ const HomePage = () => {
           <>
             <ContentRow title="Trending Now" badge="This Week" items={mapMovies(trendingMovies)} type="movie" onSelectItem={handleSelectItem} />
             <ContentRow title="Trending Series" items={mapSeries(trendingSeries)} type="series" onSelectItem={handleSelectItem} />
+
+            {/* Recommended For You */}
+            {recommendedMovies.length > 0 && (
+              <ContentRow
+                title="Recommended For You"
+                badge="Personalized"
+                items={recommendedMovies.map(m => ({
+                  id: m.id, title: m.title, poster: m.poster_path, backdrop: m.backdrop_path,
+                  year: m.release_date?.slice(0, 4) || "", rating: m.vote_average,
+                  overview: m.overview, genre_ids: m.genre_ids,
+                }))}
+                type="movie"
+                onSelectItem={handleSelectItem}
+              />
+            )}
+
+            {recommendedSeries.length > 0 && (
+              <ContentRow
+                title="Series You Might Like"
+                badge="Personalized"
+                items={recommendedSeries.map(s => ({
+                  id: s.id, title: s.name, poster: s.poster_path, backdrop: s.backdrop_path,
+                  year: s.first_air_date?.slice(0, 4) || "", rating: s.vote_average,
+                  overview: s.overview, genre_ids: s.genre_ids,
+                }))}
+                type="series"
+                onSelectItem={handleSelectItem}
+              />
+            )}
+
             <ContentRow title="Top Rated Movies" items={mapMovies(topRatedMovies)} type="movie" onSelectItem={handleSelectItem} />
             <ContentRow title="Now Playing in Theaters" items={mapMovies(nowPlayingMovies)} type="movie" onSelectItem={handleSelectItem} />
             <ContentRow title="Popular Series" items={mapSeries(popularSeries)} type="series" onSelectItem={handleSelectItem} />

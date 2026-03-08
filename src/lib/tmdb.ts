@@ -64,12 +64,27 @@ function getAdultParam(): Record<string, string> {
   return showAdult ? { include_adult: "true" } : { include_adult: "false" };
 }
 
+async function fetchWithRetry(url: string, retries = 2): Promise<Response> {
+  for (let attempt = 0; attempt <= retries; attempt++) {
+    try {
+      const res = await fetch(url);
+      if (res.ok || attempt === retries) return res;
+      // Wait before retry (exponential backoff)
+      await new Promise(r => setTimeout(r, 500 * Math.pow(2, attempt)));
+    } catch (err) {
+      if (attempt === retries) throw err;
+      await new Promise(r => setTimeout(r, 500 * Math.pow(2, attempt)));
+    }
+  }
+  throw new Error("Fetch failed after retries");
+}
+
 async function tmdb<T>(endpoint: string, params: Record<string, string> = {}): Promise<T> {
   const url = new URL(`${TMDB_BASE}${endpoint}`);
   const apiKey = getTmdbKey();
   url.searchParams.set("api_key", apiKey);
   Object.entries(params).forEach(([k, v]) => url.searchParams.set(k, v));
-  const res = await fetch(url.toString());
+  const res = await fetchWithRetry(url.toString());
   if (!res.ok) throw new Error(`TMDB Error: ${res.status}`);
   return res.json();
 }

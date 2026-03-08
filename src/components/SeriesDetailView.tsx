@@ -1,16 +1,19 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { Star, Copy, Download, ArrowLeft, Plus, ExternalLink, Play, Tv, ChevronDown } from "lucide-react";
+import { Star, Copy, Download, ArrowLeft, Plus, ExternalLink, Play, Tv, ChevronDown, Check, CheckCircle2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Progress } from "@/components/ui/progress";
+import { Checkbox } from "@/components/ui/checkbox";
 import { tmdbSeriesApi, omdbApi, img, imgOriginal, hasTmdbKey, hasOmdbKey } from "@/lib/tmdb";
 import WhereToWatch from "@/components/WhereToWatch";
 import { addToCollection, isInCollection, type CollectionSeries } from "@/lib/collection";
 import { saveProgress } from "@/lib/watchProgress";
+import { getSeasonProgress, toggleEpisode, markSeasonWatched, unmarkSeasonWatched, getNextEpisode, isEpisodeWatched, getSeriesProgress } from "@/lib/episodeTracker";
 import RatingBadge from "@/components/RatingBadge";
 import EpisodeRatingGrid from "@/components/EpisodeRatingGrid";
 import WatchlistButton from "@/components/WatchlistButton";
@@ -29,6 +32,8 @@ const SeriesDetailView = ({ seriesId, onBack, onSelectSeries }: Props) => {
   const [finishDate, setFinishDate] = useState("");
   const [userRating, setUserRating] = useState("");
   const [selectedTrailerSeason, setSelectedTrailerSeason] = useState<string>("main");
+  const [expandedSeason, setExpandedSeason] = useState<number | null>(null);
+  const [episodeRefresh, setEpisodeRefresh] = useState(0); // trigger re-renders for episode states
 
   const { data: series } = useQuery({
     queryKey: ["series-detail", seriesId],
@@ -86,6 +91,20 @@ const SeriesDetailView = ({ seriesId, onBack, onSelectSeries }: Props) => {
   const realSeasons = series?.seasons.filter((s) => s.season_number > 0) || [];
   const isOngoing = series?.status !== "Ended" && series?.status !== "Canceled";
 
+  // Episode tracker data
+  const { data: expandedSeasonDetail } = useQuery({
+    queryKey: ["season-detail", seriesId, expandedSeason],
+    queryFn: () => tmdbSeriesApi.seasonDetails(seriesId, expandedSeason!),
+    enabled: expandedSeason !== null && hasTmdbKey(),
+  });
+
+  const nextEp = series ? getNextEpisode(
+    seriesId,
+    realSeasons.map(s => ({ seasonNum: s.season_number, episodeCount: s.episode_count }))
+  ) : null;
+
+  const overallProgress = series ? getSeriesProgress(seriesId, series.number_of_episodes) : 0;
+
   const copyPoster = async () => {
     if (!series?.poster_path) return;
     try {
@@ -113,6 +132,13 @@ const SeriesDetailView = ({ seriesId, onBack, onSelectSeries }: Props) => {
 
   const handleAddToCollection = () => {
     if (!series) return;
+    if (userRating) {
+      const r = parseFloat(userRating);
+      if (isNaN(r) || r < 0 || r > 10) {
+        toast({ title: "Invalid rating", description: "Rating must be between 0 and 10", variant: "destructive" });
+        return;
+      }
+    }
     const item: CollectionSeries = {
       id: series.id,
       type: "series",
@@ -232,6 +258,22 @@ const SeriesDetailView = ({ seriesId, onBack, onSelectSeries }: Props) => {
           </div>
         </div>
 
+        {/* Overall Progress */}
+        {series.number_of_episodes > 0 && (
+          <div className="glass-panel p-3 space-y-2">
+            <div className="flex items-center justify-between">
+              <p className="text-xs font-medium flex items-center gap-1.5">
+                <CheckCircle2 size={13} className="text-primary" /> Episode Progress
+              </p>
+              <span className="text-xs text-muted-foreground">{overallProgress}%</span>
+            </div>
+            <Progress value={overallProgress} className="h-2" />
+            {nextEp && (
+              <p className="text-[10px] text-primary">Next: S{nextEp.season}E{nextEp.episode}</p>
+            )}
+          </div>
+        )}
+
         {/* Seasons with episode selector for streaming */}
         {realSeasons.length > 0 && (
           <div className="space-y-2">
@@ -240,36 +282,105 @@ const SeriesDetailView = ({ seriesId, onBack, onSelectSeries }: Props) => {
             </h3>
             <TooltipProvider>
               <div className="flex gap-3 overflow-x-auto scrollbar-hide pb-2">
-                {realSeasons.map((season) => (
-                  <Tooltip key={season.id}>
-                    <TooltipTrigger asChild>
-                      <div
-                        className="flex-shrink-0 w-[90px] cursor-pointer group"
-                        onClick={scrollToTrailer}
-                      >
-                        <div className="relative">
-                          <img src={img(season.poster_path, "w185")} alt={season.name} className="w-full h-[135px] object-cover rounded-lg group-hover:ring-2 ring-primary transition-all" loading="lazy" />
-                          <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity bg-black/50 rounded-lg">
-                            <Play size={20} fill="white" className="text-white" />
+                {realSeasons.map((season) => {
+                  const progress = getSeasonProgress(seriesId, season.season_number, season.episode_count);
+                  return (
+                    <Tooltip key={season.id}>
+                      <TooltipTrigger asChild>
+                        <div
+                          className={`flex-shrink-0 w-[90px] cursor-pointer group ${expandedSeason === season.season_number ? "ring-2 ring-primary rounded-lg" : ""}`}
+                          onClick={() => setExpandedSeason(expandedSeason === season.season_number ? null : season.season_number)}
+                        >
+                          <div className="relative">
+                            <img src={img(season.poster_path, "w185")} alt={season.name} className="w-full h-[135px] object-cover rounded-lg group-hover:ring-2 ring-primary transition-all" loading="lazy" />
+                            {progress.percent > 0 && (
+                              <div className="absolute bottom-0 left-0 right-0 h-1 bg-secondary/80 rounded-b-lg overflow-hidden">
+                                <div className="h-full bg-primary transition-all" style={{ width: `${progress.percent}%` }} />
+                              </div>
+                            )}
                           </div>
+                          <p className="text-[10px] font-medium mt-1 truncate text-center">{season.name}</p>
+                          <p className="text-[9px] text-muted-foreground text-center">
+                            {progress.watched}/{season.episode_count} eps
+                          </p>
                         </div>
-                        <p className="text-[10px] font-medium mt-1 truncate text-center">{season.name}</p>
-                        <p className="text-[9px] text-muted-foreground text-center">{season.episode_count} eps</p>
-                      </div>
-                    </TooltipTrigger>
-                    <TooltipContent side="bottom" className="max-w-[200px]">
-                      <p className="font-medium text-xs">{season.name}</p>
-                      <p className="text-[10px] text-muted-foreground">{season.episode_count} episodes · {season.air_date?.slice(0, 4) || "TBA"}</p>
-                      {season.vote_average > 0 && (
-                        <p className="text-[10px] text-primary flex items-center gap-1 mt-0.5">
-                          <Star size={9} fill="currentColor" /> {season.vote_average.toFixed(1)}
-                        </p>
-                      )}
-                    </TooltipContent>
-                  </Tooltip>
-                ))}
+                      </TooltipTrigger>
+                      <TooltipContent side="bottom" className="max-w-[200px]">
+                        <p className="font-medium text-xs">{season.name}</p>
+                        <p className="text-[10px] text-muted-foreground">{season.episode_count} episodes · {season.air_date?.slice(0, 4) || "TBA"}</p>
+                        <p className="text-[10px] text-primary">{progress.watched}/{season.episode_count} watched ({progress.percent}%)</p>
+                      </TooltipContent>
+                    </Tooltip>
+                  );
+                })}
               </div>
             </TooltipProvider>
+
+            {/* Expanded season episode list */}
+            {expandedSeason !== null && expandedSeasonDetail && (
+              <div className="glass-panel p-3 space-y-2 animate-in fade-in slide-in-from-top-2 duration-200">
+                <div className="flex items-center justify-between">
+                  <h4 className="text-xs font-semibold">Season {expandedSeason} Episodes</h4>
+                  <div className="flex gap-1.5">
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="h-6 text-[10px] px-2"
+                      onClick={() => {
+                        markSeasonWatched(seriesId, expandedSeason, expandedSeasonDetail.episodes.length);
+                        setEpisodeRefresh(r => r + 1);
+                        toast({ title: `Season ${expandedSeason} marked as watched!` });
+                      }}
+                    >
+                      <Check size={10} className="mr-1" /> Mark All
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      className="h-6 text-[10px] px-2"
+                      onClick={() => {
+                        unmarkSeasonWatched(seriesId, expandedSeason);
+                        setEpisodeRefresh(r => r + 1);
+                        toast({ title: `Season ${expandedSeason} unmarked` });
+                      }}
+                    >
+                      Clear
+                    </Button>
+                  </div>
+                </div>
+                <div className="space-y-1 max-h-[300px] overflow-y-auto">
+                  {expandedSeasonDetail.episodes.map(ep => {
+                    const watched = isEpisodeWatched(seriesId, expandedSeason, ep.episode_number);
+                    return (
+                      <div
+                        key={ep.id}
+                        className={`flex items-center gap-2 p-2 rounded-lg transition-colors ${watched ? "bg-primary/5" : "hover:bg-secondary/50"}`}
+                      >
+                        <Checkbox
+                          checked={watched}
+                          onCheckedChange={() => {
+                            toggleEpisode(seriesId, expandedSeason, ep.episode_number);
+                            setEpisodeRefresh(r => r + 1);
+                          }}
+                          className="flex-shrink-0"
+                        />
+                        <div className="flex-1 min-w-0">
+                          <p className={`text-xs font-medium truncate ${watched ? "text-muted-foreground line-through" : ""}`}>
+                            E{ep.episode_number}. {ep.name}
+                          </p>
+                          <p className="text-[9px] text-muted-foreground">{ep.air_date || "TBA"}</p>
+                        </div>
+                        {ep.vote_average > 0 && (
+                          <span className="text-[10px] text-primary flex items-center gap-0.5 flex-shrink-0">
+                            <Star size={8} fill="currentColor" /> {ep.vote_average.toFixed(1)}
+                          </span>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
           </div>
         )}
 

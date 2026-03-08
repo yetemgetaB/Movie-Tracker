@@ -2,19 +2,24 @@ import { useState, useMemo } from 'react';
 import {
   BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer,
   PieChart, Pie, Cell, LineChart, Line, CartesianGrid, RadarChart,
-  Radar, PolarGrid, PolarAngleAxis
+  Radar, PolarGrid, PolarAngleAxis, ScatterChart, Scatter, ZAxis
 } from 'recharts';
 import {
   BarChart3, Film, Tv, Star, Clock, Calendar, TrendingUp, Award, Target,
-  Flame, CheckCircle, Download, Tag, Zap, Trophy, Share2
+  Flame, CheckCircle, Download, Tag, Zap, Trophy, Share2, Goal, Sparkles
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Progress } from '@/components/ui/progress';
 import { getCollection } from '@/lib/collection';
 import { getAllAchievementsWithStatus } from '@/lib/achievements';
 import { generateStatsText, shareContent, generateShareCard, shareImage } from '@/lib/sharing';
+import { getGoal, setGoal, getCurrentMonthKey } from '@/lib/watchGoals';
+import ShareProfileCard from '@/components/ShareProfileCard';
+import TopFourGrid from '@/components/TopFourGrid';
 import { toast } from '@/hooks/use-toast';
 
 const COLORS = [
@@ -155,6 +160,42 @@ const AnalyticsPage = () => {
   // Achievements
   const achievements = useMemo(() => getAllAchievementsWithStatus(), [collection]);
 
+  // User vs IMDb scatter data
+  const scatterData = useMemo(() => {
+    return collection
+      .filter(i => i.userRating && i.userRating !== "—" && i.imdb && i.imdb !== "—")
+      .map(i => {
+        const userR = parseFloat(i.userRating);
+        const imdbStr = i.imdb.replace("/10", "");
+        const imdbR = parseFloat(imdbStr);
+        if (isNaN(userR) || isNaN(imdbR)) return null;
+        return { title: i.title, userRating: userR, imdbRating: imdbR, type: i.type };
+      })
+      .filter(Boolean);
+  }, [collection]);
+
+  // Year in review
+  const yearInReview = useMemo(() => {
+    const year = new Date().getFullYear().toString();
+    const thisYear = collection.filter(i => i.addedAt?.startsWith(year));
+    const yrMovies = thisYear.filter(i => i.type === "movie");
+    const yrSeries = thisYear.filter(i => i.type === "series");
+    const yrRated = thisYear.filter(i => i.userRating && i.userRating !== "—" && !isNaN(parseFloat(i.userRating)));
+    const avgR = yrRated.length ? (yrRated.reduce((s, i) => s + parseFloat(i.userRating), 0) / yrRated.length).toFixed(1) : "—";
+    const runtime = yrMovies.reduce((s, m) => s + ((m as any).runtime || 90), 0);
+    return { year, total: thisYear.length, movies: yrMovies.length, series: yrSeries.length, avgRating: avgR, hours: Math.round(runtime / 60) };
+  }, [collection]);
+
+  // Watch goal
+  const [goalInput, setGoalInput] = useState("");
+  const currentGoal = getGoal();
+  const monthlyRuntime = useMemo(() => {
+    const monthKey = getCurrentMonthKey();
+    return movies
+      .filter(m => m.addedAt?.startsWith(monthKey))
+      .reduce((s, m) => s + ((m as any).runtime || 90), 0);
+  }, [movies]);
+
   // Watch heatmap data (last 365 days)
   const heatmapData = useMemo(() => {
     const days: Record<string, number> = {};
@@ -244,6 +285,8 @@ const AnalyticsPage = () => {
           <p className="text-xs text-muted-foreground mt-0.5">Your complete viewing insights</p>
         </div>
         <div className="flex gap-2">
+          <ShareProfileCard />
+          <TopFourGrid />
           <Button size="sm" variant="outline" onClick={handleShareStats} className="gap-1.5">
             <Share2 size={13} /> Share
           </Button>
@@ -264,10 +307,11 @@ const AnalyticsPage = () => {
       </div>
 
       <Tabs defaultValue="genres" className="px-2">
-        <TabsList className="w-full grid grid-cols-5 text-xs">
+        <TabsList className="w-full grid grid-cols-6 text-xs">
           <TabsTrigger value="genres">Genres</TabsTrigger>
           <TabsTrigger value="ratings">Ratings</TabsTrigger>
           <TabsTrigger value="activity">Activity</TabsTrigger>
+          <TabsTrigger value="goals">Goals</TabsTrigger>
           <TabsTrigger value="achievements">🏆</TabsTrigger>
           <TabsTrigger value="more">More</TabsTrigger>
         </TabsList>
@@ -368,6 +412,25 @@ const AnalyticsPage = () => {
               </div>
             </CardContent>
           </Card>
+          {/* User vs IMDb Scatter */}
+          {scatterData.length > 0 && (
+            <Card className="glass-panel border-border/30">
+              <CardHeader className="pb-2"><CardTitle className="text-sm flex items-center gap-2"><Sparkles size={14} className="text-primary" /> You vs IMDb</CardTitle></CardHeader>
+              <CardContent>
+                <ResponsiveContainer width="100%" height={220}>
+                  <ScatterChart>
+                    <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+                    <XAxis type="number" dataKey="imdbRating" name="IMDb" domain={[0, 10]} tick={{ fontSize: 10, fill: "hsl(var(--muted-foreground))" }} label={{ value: "IMDb", position: "bottom", fontSize: 10, fill: "hsl(var(--muted-foreground))" }} />
+                    <YAxis type="number" dataKey="userRating" name="Your Rating" domain={[0, 10]} tick={{ fontSize: 10, fill: "hsl(var(--muted-foreground))" }} label={{ value: "You", angle: -90, position: "left", fontSize: 10, fill: "hsl(var(--muted-foreground))" }} />
+                    <ZAxis range={[40, 40]} />
+                    <Tooltip contentStyle={CustomTooltipStyle} formatter={(v: any, name: string) => [v, name]} labelFormatter={() => ""} />
+                    <Scatter data={scatterData} fill="hsl(var(--primary))" />
+                  </ScatterChart>
+                </ResponsiveContainer>
+                <p className="text-[10px] text-muted-foreground text-center mt-1">Points above the diagonal = you rate higher than IMDb</p>
+              </CardContent>
+            </Card>
+          )}
         </TabsContent>
 
         {/* Activity tab */}
@@ -404,6 +467,78 @@ const AnalyticsPage = () => {
                 <TrendingUp size={20} className="text-primary mx-auto mb-1" />
                 <p className="text-2xl font-black text-foreground">{streak.longest}</p>
                 <p className="text-xs text-muted-foreground">Best streak (days)</p>
+              </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        {/* Goals tab */}
+        <TabsContent value="goals" className="mt-4 space-y-4">
+          {/* Watch Time Goal */}
+          <Card className="glass-panel border-border/30">
+            <CardHeader className="pb-2"><CardTitle className="text-sm flex items-center gap-2"><Goal size={14} className="text-primary" /> Monthly Watch Goal</CardTitle></CardHeader>
+            <CardContent className="space-y-3">
+              {currentGoal ? (
+                <>
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm text-muted-foreground">Target: {currentGoal.targetHours}h</span>
+                    <span className="text-sm font-bold">{Math.round(monthlyRuntime / 60)}h watched</span>
+                  </div>
+                  <Progress value={Math.min(100, (monthlyRuntime / 60 / currentGoal.targetHours) * 100)} className="h-3" />
+                  <p className="text-xs text-muted-foreground">
+                    {monthlyRuntime / 60 >= currentGoal.targetHours
+                      ? "🎉 Goal reached!"
+                      : `${Math.max(0, currentGoal.targetHours - Math.round(monthlyRuntime / 60))}h remaining`}
+                  </p>
+                </>
+              ) : (
+                <div className="space-y-2">
+                  <p className="text-xs text-muted-foreground">Set a monthly watch time goal (hours)</p>
+                  <div className="flex gap-2">
+                    <Input
+                      type="number"
+                      min={1}
+                      placeholder="e.g. 20"
+                      value={goalInput}
+                      onChange={e => setGoalInput(e.target.value)}
+                      className="h-8 text-sm bg-secondary/50 border-border/50"
+                    />
+                    <Button
+                      size="sm"
+                      onClick={() => {
+                        const h = parseInt(goalInput);
+                        if (h > 0) { setGoal(h); setGoalInput(""); toast({ title: `Goal set: ${h}h/month!` }); }
+                      }}
+                    >
+                      Set Goal
+                    </Button>
+                  </div>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+
+          {/* Year in Review */}
+          <Card className="glass-panel border-border/30">
+            <CardHeader className="pb-2"><CardTitle className="text-sm flex items-center gap-2"><Sparkles size={14} className="text-primary" /> {yearInReview.year} Year in Review</CardTitle></CardHeader>
+            <CardContent>
+              <div className="grid grid-cols-2 gap-3">
+                <div className="p-3 rounded-xl bg-primary/10 text-center">
+                  <p className="text-2xl font-black text-primary">{yearInReview.total}</p>
+                  <p className="text-xs text-muted-foreground">Titles This Year</p>
+                </div>
+                <div className="p-3 rounded-xl bg-secondary text-center">
+                  <p className="text-2xl font-black">{yearInReview.hours}h</p>
+                  <p className="text-xs text-muted-foreground">Hours Watched</p>
+                </div>
+                <div className="p-3 rounded-xl bg-secondary text-center">
+                  <p className="text-lg font-bold">{yearInReview.movies} 🎬 / {yearInReview.series} 📺</p>
+                  <p className="text-xs text-muted-foreground">Movies / Series</p>
+                </div>
+                <div className="p-3 rounded-xl bg-secondary text-center">
+                  <p className="text-lg font-bold">{yearInReview.avgRating} ⭐</p>
+                  <p className="text-xs text-muted-foreground">Avg Rating</p>
+                </div>
               </div>
             </CardContent>
           </Card>

@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from "react";
-import { Database, Search, Film, Tv, ArrowUp, ArrowDown, ArrowUpDown, Trash2, Filter, Edit2, X, Check, Eye, Star, Calendar, Clock } from "lucide-react";
+import { Database, Search, Film, Tv, ArrowUp, ArrowDown, ArrowUpDown, Trash2, Filter, Edit2, X, Check, Eye, Star, Calendar, Clock, AlertTriangle } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
@@ -7,6 +7,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { getCollection, removeFromCollection, updateCollectionItem, type CollectionItem, type CollectionMovie, type CollectionSeries } from "@/lib/collection";
 import { toast } from "@/hooks/use-toast";
 import { useNavigate } from "react-router-dom";
@@ -163,6 +164,7 @@ const VaultPage = () => {
   const [genreFilter, setGenreFilter] = useState("all");
   const [editItem, setEditItem] = useState<CollectionItem | null>(null);
   const [viewMode, setViewMode] = useState<"table" | "grid">("table");
+  const [deleteConfirm, setDeleteConfirm] = useState<{ id: number; type: "movie" | "series"; title: string } | null>(null);
 
   const loadCollection = () => setCollection(getCollection());
 
@@ -215,10 +217,16 @@ const VaultPage = () => {
     }));
   };
 
-  const handleRemove = (id: number, _type: "movie" | "series", title: string) => {
-    removeFromCollection(id);
+  const handleRemove = (id: number, type: "movie" | "series", title: string) => {
+    setDeleteConfirm({ id, type, title });
+  };
+
+  const confirmRemove = () => {
+    if (!deleteConfirm) return;
+    removeFromCollection(deleteConfirm.id);
     loadCollection();
-    toast({ title: `${title} removed from Vault` });
+    toast({ title: `${deleteConfirm.title} removed from Vault` });
+    setDeleteConfirm(null);
   };
 
   const handleSaveEdit = (updates: Partial<CollectionItem>) => {
@@ -489,6 +497,26 @@ const VaultPage = () => {
       </Tabs>
 
       <EditDialog item={editItem} open={!!editItem} onClose={() => setEditItem(null)} onSave={handleSaveEdit} />
+
+      {/* Delete Confirmation */}
+      <AlertDialog open={!!deleteConfirm} onOpenChange={(open) => { if (!open) setDeleteConfirm(null); }}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle className="flex items-center gap-2">
+              <AlertTriangle size={18} className="text-destructive" /> Remove from Vault?
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to remove <strong>{deleteConfirm?.title}</strong> from your collection? This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={confirmRemove} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+              Remove
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 };

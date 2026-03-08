@@ -3,6 +3,7 @@ import { useLocation } from "react-router-dom";
 import BottomNav from "./BottomNav";
 import NotificationBell from "./NotificationBell";
 import Titlebar from "./Titlebar";
+import CommandPalette from "./CommandPalette";
 import { initAccentColor } from "@/hooks/use-accent-color";
 import { initPlugins } from "@/lib/plugins";
 import { checkAchievements } from "@/lib/achievements";
@@ -35,6 +36,7 @@ const AppLayout = ({ children }: AppLayoutProps) => {
       </a>
       <Titlebar />
       <NotificationBell visible={navVisible} />
+      <CommandPalette />
       <main id="main-content" className="pt-9 pb-28" role="main">{children}</main>
       <BottomNav onVisibilityChange={setNavVisible} />
     </div>
