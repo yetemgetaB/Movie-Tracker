@@ -7,6 +7,7 @@ export const ACCENT_PRESETS: Record<string, { primary: string; glow: string }> =
   amber: { primary: "45 90% 50%", glow: "45 90% 60%" },
   emerald: { primary: "160 70% 40%", glow: "160 70% 50%" },
   red: { primary: "0 90% 50%", glow: "0 90% 60%" },
+  midnight: { primary: "0 0% 75%", glow: "0 0% 85%" },
 };
 
 export type AccentColor = keyof typeof ACCENT_PRESETS;
