@@ -4,6 +4,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import AppLayout from "./components/AppLayout";
+import ErrorBoundary from "./components/ErrorBoundary";
 import HomePage from "./pages/HomePage";
 import MoviesPage from "./pages/MoviesPage";
 import SeriesPage from "./pages/SeriesPage";
@@ -28,18 +29,20 @@ const App = () => {
         <Toaster />
         <Sonner />
         <BrowserRouter>
-          <Routes>
-            <Route path="/" element={<LayoutWrapper><HomePage /></LayoutWrapper>} />
-            <Route path="/movies" element={<LayoutWrapper><MoviesPage /></LayoutWrapper>} />
-            <Route path="/series" element={<LayoutWrapper><SeriesPage /></LayoutWrapper>} />
-            <Route path="/browse" element={<LayoutWrapper><BrowsePage /></LayoutWrapper>} />
-            <Route path="/calendar" element={<LayoutWrapper><CalendarPage /></LayoutWrapper>} />
-            <Route path="/library" element={<LayoutWrapper><VaultPage /></LayoutWrapper>} />
-            <Route path="/settings" element={<LayoutWrapper><SettingsPage /></LayoutWrapper>} />
-            <Route path="/analytics" element={<LayoutWrapper><AnalyticsPage /></LayoutWrapper>} />
-            <Route path="/watchlist" element={<LayoutWrapper><WatchlistPage /></LayoutWrapper>} />
-            <Route path="*" element={<LayoutWrapper><NotFound /></LayoutWrapper>} />
-          </Routes>
+          <ErrorBoundary>
+            <Routes>
+              <Route path="/" element={<LayoutWrapper><HomePage /></LayoutWrapper>} />
+              <Route path="/movies" element={<LayoutWrapper><MoviesPage /></LayoutWrapper>} />
+              <Route path="/series" element={<LayoutWrapper><SeriesPage /></LayoutWrapper>} />
+              <Route path="/browse" element={<LayoutWrapper><BrowsePage /></LayoutWrapper>} />
+              <Route path="/calendar" element={<LayoutWrapper><CalendarPage /></LayoutWrapper>} />
+              <Route path="/library" element={<LayoutWrapper><VaultPage /></LayoutWrapper>} />
+              <Route path="/settings" element={<LayoutWrapper><SettingsPage /></LayoutWrapper>} />
+              <Route path="/analytics" element={<LayoutWrapper><AnalyticsPage /></LayoutWrapper>} />
+              <Route path="/watchlist" element={<LayoutWrapper><WatchlistPage /></LayoutWrapper>} />
+              <Route path="*" element={<LayoutWrapper><NotFound /></LayoutWrapper>} />
+            </Routes>
+          </ErrorBoundary>
         </BrowserRouter>
       </TooltipProvider>
     </QueryClientProvider>
