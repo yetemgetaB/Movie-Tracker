@@ -164,6 +164,7 @@ const VaultPage = () => {
   const [genreFilter, setGenreFilter] = useState("all");
   const [editItem, setEditItem] = useState<CollectionItem | null>(null);
   const [viewMode, setViewMode] = useState<"table" | "grid">("table");
+  const [deleteConfirm, setDeleteConfirm] = useState<{ id: number; type: "movie" | "series"; title: string } | null>(null);
 
   const loadCollection = () => setCollection(getCollection());
 
