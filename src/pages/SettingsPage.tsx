@@ -63,10 +63,10 @@ const SECTIONS = [
 const DEVELOPER_LINKS = [
   { label: "GitHub", icon: "github", url: "https://github.com/yetemgetaB", color: "#ffffff" },
   { label: "LinkedIn", icon: "linkedin", url: "https://linkedin.com/in/yetemgeta-bekele", color: "#0a66c2" },
-  { label: "Instagram", icon: "instagram", url: "https://instagram.com/yetemgetab", color: "#e4405f" },
-  { label: "Telegram", icon: "telegram", url: "https://t.me/yetemgetab", color: "#26a5e4" },
+  { label: "Instagram", icon: "instagram", url: "https://www.instagram.com/_.yetem._/", color: "#e4405f" },
+  { label: "Telegram", icon: "telegram", url: "https://t.me/Trinity12123", color: "#26a5e4" },
   { label: "Twitter / X", icon: "twitter", url: "https://x.com/yetemgetab", color: "#ffffff" },
-  { label: "Buy Me a Coffee", icon: "coffee", url: "https://buymeacoffee.com/yetemgetab", color: "#ffdd00" },
+  { label: "Buy Me a Coffee", icon: "coffee", url: "https://buymeacoffee.com/yetemgeta", color: "#ffdd00" },
   { label: "Email", icon: "email", url: "mailto:yetemgeta@example.com", color: "#ea4335" },
   { label: "Website", icon: "globe", url: "https://yetemgeta.dev", color: "#06b6d4" },
 ];
