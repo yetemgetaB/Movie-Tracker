@@ -7,6 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { tmdbApi, omdbApi, img, imgOriginal, hasTmdbKey, hasOmdbKey } from "@/lib/tmdb";
+import WhereToWatch from "@/components/WhereToWatch";
 import { addToCollection, isInCollection, type CollectionMovie } from "@/lib/collection";
 import { saveProgress } from "@/lib/watchProgress";
 import RatingBadge from "@/components/RatingBadge";
