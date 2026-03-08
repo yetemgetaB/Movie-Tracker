@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from "react";
-import { Play, Info, ChevronLeft, ChevronRight, Volume2, VolumeX, AlertCircle, Plus, Star, WifiOff } from "lucide-react";
+import { Play, Info, ChevronLeft, ChevronRight, Volume2, VolumeX, AlertCircle, Plus, Star, WifiOff, Sparkles, Heart, Zap, Brain, Laugh, Ghost } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -8,6 +8,7 @@ import { tmdbApi, tmdbSeriesApi, img, imgOriginal, hasTmdbKey, type TmdbMovie, t
 import { useNavigate } from "react-router-dom";
 import { getCollection } from "@/lib/collection";
 import { getWatchProgress } from "@/lib/watchProgress";
+import { getRecommendedMovies, getRecommendedSeries } from "@/lib/recommendations";
 import { toast } from "@/hooks/use-toast";
 import { useOnlineStatus } from "@/hooks/use-online-status";
 import MovieDetailView from "@/components/MovieDetailView";
