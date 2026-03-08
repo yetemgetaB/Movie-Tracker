@@ -26,6 +26,9 @@ function applyAccent(name: string) {
   r.style.setProperty("--ring", p.primary);
   r.style.setProperty("--sidebar-primary", p.primary);
   r.style.setProperty("--sidebar-ring", p.primary);
+  // Update glow tokens so nav-glow and other glow effects follow accent
+  r.style.setProperty("--glow-soft", `${p.glow} / 0.2`);
+  r.style.setProperty("--glow-medium", `${p.glow} / 0.35`);
 }
 
 export function initAccentColor() {
