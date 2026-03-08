@@ -41,6 +41,14 @@ export function applyStoredTheme() {
     r.style.setProperty("--border", "220 15% 85%");
     r.style.setProperty("--input", "220 15% 85%");
     r.style.setProperty("--primary-foreground", "0 0% 100%");
+    // Light-mode custom tokens
+    r.style.setProperty("--glass", "0 0% 100% / 0.7");
+    r.style.setProperty("--glass-border", "220 15% 80% / 0.5");
+    r.style.setProperty("--glow-soft", "209 95% 50% / 0.15");
+    r.style.setProperty("--glow-medium", "209 95% 50% / 0.25");
+    r.style.setProperty("--surface-hover", "220 15% 93%");
+    r.style.setProperty("--mica-from", "0 0% 95%");
+    r.style.setProperty("--mica-to", "0 0% 98%");
   } else {
     r.style.setProperty("--background", "220 20% 7%");
     r.style.setProperty("--foreground", "210 20% 92%");
@@ -55,6 +63,14 @@ export function applyStoredTheme() {
     r.style.setProperty("--border", "220 15% 18%");
     r.style.setProperty("--input", "220 15% 18%");
     r.style.setProperty("--primary-foreground", "210 20% 95%");
+    // Dark-mode custom tokens
+    r.style.setProperty("--glass", "220 18% 10% / 0.6");
+    r.style.setProperty("--glass-border", "220 15% 25% / 0.4");
+    r.style.setProperty("--glow-soft", "209 95% 35% / 0.2");
+    r.style.setProperty("--glow-medium", "209 95% 35% / 0.35");
+    r.style.setProperty("--surface-hover", "220 15% 16%");
+    r.style.setProperty("--mica-from", "220 18% 12%");
+    r.style.setProperty("--mica-to", "220 20% 7%");
   }
 }
 
