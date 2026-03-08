@@ -43,6 +43,8 @@
     --glow-soft: 209 95% 35% / 0.2;
     --glow-medium: 209 95% 35% / 0.35;
     --surface-hover: 220 15% 16%;
+    --mica-from: 220 18% 12%;
+    --mica-to: 220 20% 7%;
 
     --sidebar-background: 220 20% 7%;
     --sidebar-foreground: 210 20% 92%;
@@ -100,7 +102,7 @@
   }
 
   .mica-bg {
-    background: radial-gradient(ellipse at top, hsl(220 18% 12%) 0%, hsl(220 20% 7%) 70%);
+    background: radial-gradient(ellipse at top, hsl(var(--mica-from)) 0%, hsl(var(--mica-to)) 70%);
   }
 
   .fade-up {

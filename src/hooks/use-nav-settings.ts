@@ -37,10 +37,21 @@ function load(): NavSettings {
 
 function save(settings: NavSettings) {
   localStorage.setItem(STORAGE_KEY, JSON.stringify(settings));
+  window.dispatchEvent(new CustomEvent("nav-settings-changed", { detail: settings }));
 }
 
 export function useNavSettings() {
   const [settings, setSettings] = useState<NavSettings>(load);
+
+  // Listen for changes from other components (e.g. Settings updating nav)
+  useEffect(() => {
+    const handler = (e: Event) => {
+      const detail = (e as CustomEvent).detail;
+      if (detail) setSettings(detail);
+    };
+    window.addEventListener("nav-settings-changed", handler);
+    return () => window.removeEventListener("nav-settings-changed", handler);
+  }, []);
 
   const update = useCallback((partial: Partial<NavSettings>) => {
     setSettings(prev => {

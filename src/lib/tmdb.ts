@@ -5,7 +5,6 @@ const OMDB_BASE = "https://www.omdbapi.com";
 const TMDB_IMG = "https://image.tmdb.org/t/p";
 
 export function getApiKey(keyName: string): string | null {
-  // Support both new (movie_tracker_*) and legacy key names
   return (
     localStorage.getItem(`movie_tracker_${keyName}`) ||
     localStorage.getItem(keyName) ||
@@ -28,10 +27,42 @@ const getOmdbKey = () => {
   return key;
 };
 
+/** Map image_quality setting to TMDB size */
+function getImageSize(requestedSize: string): string {
+  const quality = localStorage.getItem("image_quality") || "high";
+  // If caller requests a specific non-default size like "original" or "w780", respect it
+  if (requestedSize === "original" || requestedSize === "w780" || requestedSize === "w1280") {
+    // For low quality, downgrade large requests
+    if (quality === "low") return "w342";
+    if (quality === "medium") return requestedSize === "original" ? "w780" : requestedSize;
+    return requestedSize;
+  }
+  switch (quality) {
+    case "low": return "w200";
+    case "medium": return "w342";
+    case "high": return "w500";
+    case "auto": {
+      const conn = (navigator as any).connection;
+      if (conn) {
+        const type = conn.effectiveType;
+        if (type === "slow-2g" || type === "2g") return "w200";
+        if (type === "3g") return "w342";
+      }
+      return "w500";
+    }
+    default: return requestedSize;
+  }
+}
+
 export const img = (path: string | null, size = "w500") =>
-  path ? `${TMDB_IMG}/${size}${path}` : "/placeholder.svg";
+  path ? `${TMDB_IMG}/${getImageSize(size)}${path}` : "/placeholder.svg";
 
 export const imgOriginal = (path: string | null) => img(path, "original");
+
+function getAdultParam(): Record<string, string> {
+  const showAdult = localStorage.getItem("show_adult") === "true";
+  return showAdult ? { include_adult: "true" } : { include_adult: "false" };
+}
 
 async function tmdb<T>(endpoint: string, params: Record<string, string> = {}): Promise<T> {
   const url = new URL(`${TMDB_BASE}${endpoint}`);
@@ -144,7 +175,7 @@ export const tmdbApi = {
   search: (query: string, page = 1) =>
     tmdb<{ results: TmdbMovie[]; total_results: number; total_pages: number }>(
       "/search/movie",
-      { query, page: String(page) }
+      { query, page: String(page), ...getAdultParam() }
     ),
   searchByPerson: (personId: number) =>
     tmdb<{ cast: TmdbMovie[] }>(`/person/${personId}/movie_credits`).then(r => r.cast),
@@ -159,9 +190,9 @@ export const tmdbApi = {
   recommendations: (id: number) =>
     tmdb<{ results: TmdbMovie[] }>(`/movie/${id}/recommendations`).then((r) => r.results),
   discover: (params: Record<string, string>) =>
-    tmdb<{ results: TmdbMovie[] }>("/discover/movie", params).then((r) => r.results),
+    tmdb<{ results: TmdbMovie[] }>("/discover/movie", { ...params, ...getAdultParam() }).then((r) => r.results),
   discoverByKeyword: (keywordId: number) =>
-    tmdb<{ results: TmdbMovie[] }>("/discover/movie", { with_keywords: String(keywordId) }).then((r) => r.results),
+    tmdb<{ results: TmdbMovie[] }>("/discover/movie", { with_keywords: String(keywordId), ...getAdultParam() }).then((r) => r.results),
   searchPerson: (query: string) =>
     tmdb<{ results: { id: number; name: string; profile_path: string | null; known_for_department: string }[] }>(
       "/search/person", { query }
