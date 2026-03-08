@@ -1,22 +1,23 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import {
   Settings, Key, Palette, Monitor, Database, Accessibility, Keyboard,
   Eye, EyeOff, CheckCircle, XCircle, Trash2, Download, Upload, RotateCcw,
   Star, RefreshCw, Loader2, ChevronDown,
   Info, ExternalLink, Heart, Image as ImageIcon, Zap, Tag, GitBranch, DownloadCloud,
-  Navigation, GripVertical, ArrowUp, ArrowDown
+  Navigation, GripVertical, ArrowUp, ArrowDown, User, Coffee, Mail, Globe
 } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
+import { Switch } from "@/components/ui/switch";
 import { applyStoredTheme } from "@/components/AppLayout";
 import { useAccentColor } from "@/hooks/use-accent-color";
 import { useToast } from "@/hooks/use-toast";
 import { useNavSettings, type NavPosition } from "@/hooks/use-nav-settings";
-import { check } from "@tauri-apps/plugin-updater";
-import { relaunch } from "@tauri-apps/plugin-process";
+import { useNavigate } from "react-router-dom";
+import { openExternal } from "@/lib/openExternal";
 import appIcon from "@/assets/app-icon.png";
 
-const APP_VERSION = "1.3.0";
+const APP_VERSION = "1.3.1";
 const GITHUB_REPO = "yetemgetaB/Movie-Tracker";
 const GITHUB_URL = `https://github.com/${GITHUB_REPO}`;
 
@@ -53,20 +54,65 @@ const SECTIONS = [
   { id: "display", label: "Display", icon: Monitor },
   { id: "accessibility", label: "Accessibility", icon: Accessibility },
   { id: "data", label: "Data", icon: Database },
-  { id: "about", label: "About", icon: Info },
   { id: "shortcuts", label: "Shortcuts", icon: Keyboard },
+  { id: "about", label: "About", icon: Info },
+  { id: "developer", label: "Developer", icon: User },
 ];
 
-// ── Toggle component ──────────────────────────────────────────────────────────
-const Toggle = ({ checked, onChange }: { checked: boolean; onChange: (v: boolean) => void }) => (
-  <button
-    onClick={() => onChange(!checked)}
-    className={`relative w-11 h-6 rounded-full transition-colors ${checked ? "bg-primary" : "bg-muted"}`}
-    aria-pressed={checked}
-  >
-    <span className={`absolute top-1 w-4 h-4 rounded-full bg-white shadow transition-transform ${checked ? "translate-x-6" : "translate-x-1"}`} />
-  </button>
-);
+// Social links for the developer
+const DEVELOPER_LINKS = [
+  { label: "GitHub", icon: "github", url: "https://github.com/yetemgetaB", color: "#ffffff" },
+  { label: "LinkedIn", icon: "linkedin", url: "https://linkedin.com/in/yetemgeta-bekele", color: "#0a66c2" },
+  { label: "Instagram", icon: "instagram", url: "https://instagram.com/yetemgetab", color: "#e4405f" },
+  { label: "Telegram", icon: "telegram", url: "https://t.me/yetemgetab", color: "#26a5e4" },
+  { label: "Twitter / X", icon: "twitter", url: "https://x.com/yetemgetab", color: "#ffffff" },
+  { label: "Buy Me a Coffee", icon: "coffee", url: "https://buymeacoffee.com/yetemgetab", color: "#ffdd00" },
+  { label: "Email", icon: "email", url: "mailto:yetemgeta@example.com", color: "#ea4335" },
+  { label: "Website", icon: "globe", url: "https://yetemgeta.dev", color: "#06b6d4" },
+];
+
+// Default shortcut definitions
+interface ShortcutDef {
+  id: string;
+  action: string;
+  defaultKeys: string;
+  keys: string;
+  route?: string;
+}
+
+const DEFAULT_SHORTCUTS: ShortcutDef[] = [
+  { id: "search", action: "Search", defaultKeys: "Ctrl+K", keys: "Ctrl+K" },
+  { id: "home", action: "Go to Home", defaultKeys: "G then H", keys: "G then H", route: "/" },
+  { id: "movies", action: "Go to Movies", defaultKeys: "G then M", keys: "G then M", route: "/movies" },
+  { id: "series", action: "Go to Series", defaultKeys: "G then S", keys: "G then S", route: "/series" },
+  { id: "browse", action: "Go to Browse", defaultKeys: "G then B", keys: "G then B", route: "/browse" },
+  { id: "vault", action: "Go to Vault", defaultKeys: "G then V", keys: "G then V", route: "/library" },
+  { id: "watchlist", action: "Go to Watchlist", defaultKeys: "G then W", keys: "G then W", route: "/watchlist" },
+  { id: "analytics", action: "Go to Analytics", defaultKeys: "G then A", keys: "G then A", route: "/analytics" },
+  { id: "settings", action: "Go to Settings", defaultKeys: "G then T", keys: "G then T", route: "/settings" },
+  { id: "calendar", action: "Go to Calendar", defaultKeys: "G then C", keys: "G then C", route: "/calendar" },
+  { id: "escape", action: "Close / Back", defaultKeys: "Escape", keys: "Escape" },
+  { id: "fullscreen", action: "Toggle Fullscreen", defaultKeys: "F11", keys: "F11" },
+];
+
+function loadShortcuts(): ShortcutDef[] {
+  try {
+    const raw = localStorage.getItem("movie_tracker_shortcuts");
+    if (raw) {
+      const saved = JSON.parse(raw) as ShortcutDef[];
+      // Merge with defaults to pick up new shortcuts
+      return DEFAULT_SHORTCUTS.map(d => {
+        const s = saved.find(x => x.id === d.id);
+        return s ? { ...d, keys: s.keys } : d;
+      });
+    }
+  } catch { /* ignore */ }
+  return DEFAULT_SHORTCUTS.map(d => ({ ...d }));
+}
+
+function saveShortcuts(shortcuts: ShortcutDef[]) {
+  localStorage.setItem("movie_tracker_shortcuts", JSON.stringify(shortcuts));
+}
 
 // ── Modern Zoom Slider ────────────────────────────────────────────────────────
 const ZoomSlider = ({ value, onChange }: { value: number; onChange: (v: number) => void }) => {
@@ -316,19 +362,46 @@ const ChangelogCard = ({ release, isLatest }: { release: GithubRelease; isLatest
               );
             })}
           </div>
-          <a href={release.html_url} target="_blank" rel="noopener noreferrer"
-            className="inline-flex items-center gap-1.5 text-xs text-primary hover:underline mt-1 pt-2">
+          <button
+            onClick={() => openExternal(release.html_url)}
+            className="inline-flex items-center gap-1.5 text-xs text-primary hover:underline mt-1 pt-2"
+          >
             <ExternalLink size={10} /> View full release on GitHub
-          </a>
+          </button>
         </div>
       )}
     </div>
   );
 };
 
+// Social link icon component
+const SocialIcon = ({ type, size = 18 }: { type: string; size?: number }) => {
+  switch (type) {
+    case "github":
+      return <svg viewBox="0 0 24 24" width={size} height={size} fill="currentColor"><path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0024 12c0-6.63-5.37-12-12-12z"/></svg>;
+    case "linkedin":
+      return <svg viewBox="0 0 24 24" width={size} height={size} fill="currentColor"><path d="M20.447 20.452h-3.554v-5.569c0-1.328-.027-3.037-1.852-3.037-1.853 0-2.136 1.445-2.136 2.939v5.667H9.351V9h3.414v1.561h.046c.477-.9 1.637-1.85 3.37-1.85 3.601 0 4.267 2.37 4.267 5.455v6.286zM5.337 7.433a2.062 2.062 0 01-2.063-2.065 2.064 2.064 0 112.063 2.065zm1.782 13.019H3.555V9h3.564v11.452zM22.225 0H1.771C.792 0 0 .774 0 1.729v20.542C0 23.227.792 24 1.771 24h20.451C23.2 24 24 23.227 24 22.271V1.729C24 .774 23.2 0 22.222 0h.003z"/></svg>;
+    case "instagram":
+      return <svg viewBox="0 0 24 24" width={size} height={size} fill="currentColor"><path d="M12 0C8.74 0 8.333.015 7.053.072 5.775.132 4.905.333 4.14.63c-.789.306-1.459.717-2.126 1.384S.935 3.35.63 4.14C.333 4.905.131 5.775.072 7.053.012 8.333 0 8.74 0 12s.015 3.667.072 4.947c.06 1.277.261 2.148.558 2.913a5.885 5.885 0 001.384 2.126A5.868 5.868 0 004.14 23.37c.766.296 1.636.499 2.913.558C8.333 23.988 8.74 24 12 24s3.667-.015 4.947-.072c1.277-.06 2.148-.262 2.913-.558a5.898 5.898 0 002.126-1.384 5.86 5.86 0 001.384-2.126c.296-.765.499-1.636.558-2.913.06-1.28.072-1.687.072-4.947s-.015-3.667-.072-4.947c-.06-1.277-.262-2.149-.558-2.913a5.89 5.89 0 00-1.384-2.126A5.847 5.847 0 0019.86.63c-.765-.297-1.636-.499-2.913-.558C15.667.012 15.26 0 12 0zm0 2.16c3.203 0 3.585.016 4.85.071 1.17.055 1.805.249 2.227.415.562.217.96.477 1.382.896.419.42.679.819.896 1.381.164.422.36 1.057.413 2.227.057 1.266.07 1.646.07 4.85s-.015 3.585-.074 4.85c-.061 1.17-.256 1.805-.421 2.227a3.81 3.81 0 01-.899 1.382 3.744 3.744 0 01-1.38.896c-.42.164-1.065.36-2.235.413-1.274.057-1.649.07-4.859.07-3.211 0-3.586-.015-4.859-.074-1.171-.061-1.816-.256-2.236-.421a3.716 3.716 0 01-1.379-.899 3.644 3.644 0 01-.9-1.38c-.165-.42-.359-1.065-.42-2.235-.045-1.26-.061-1.649-.061-4.844 0-3.196.016-3.586.061-4.861.061-1.17.255-1.814.42-2.234.21-.57.479-.96.9-1.381.419-.419.81-.689 1.379-.898.42-.166 1.051-.361 2.221-.421 1.275-.045 1.65-.06 4.859-.06l.045.03zm0 3.678a6.162 6.162 0 100 12.324 6.162 6.162 0 100-12.324zM12 16c-2.21 0-4-1.79-4-4s1.79-4 4-4 4 1.79 4 4-1.79 4-4 4zm7.846-10.405a1.441 1.441 0 11-2.882 0 1.441 1.441 0 012.882 0z"/></svg>;
+    case "telegram":
+      return <svg viewBox="0 0 24 24" width={size} height={size} fill="currentColor"><path d="M11.944 0A12 12 0 000 12a12 12 0 0012 12 12 12 0 0012-12A12 12 0 0012 0a12 12 0 00-.056 0zm4.962 7.224c.1-.002.321.023.465.14a.506.506 0 01.171.325c.016.093.036.306.02.472-.18 1.898-.962 6.502-1.36 8.627-.168.9-.499 1.201-.82 1.23-.696.065-1.225-.46-1.9-.902-1.056-.693-1.653-1.124-2.678-1.8-1.185-.78-.417-1.21.258-1.91.177-.184 3.247-2.977 3.307-3.23.007-.032.014-.15-.056-.212s-.174-.041-.249-.024c-.106.024-1.793 1.14-5.061 3.345-.479.33-.913.49-1.302.48-.428-.008-1.252-.241-1.865-.44-.752-.245-1.349-.374-1.297-.789.027-.216.325-.437.893-.663 3.498-1.524 5.83-2.529 6.998-3.014 3.332-1.386 4.025-1.627 4.476-1.635z"/></svg>;
+    case "twitter":
+      return <svg viewBox="0 0 24 24" width={size} height={size} fill="currentColor"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/></svg>;
+    case "coffee":
+      return <Coffee size={size} />;
+    case "email":
+      return <Mail size={size} />;
+    case "globe":
+      return <Globe size={size} />;
+    default:
+      return <Globe size={size} />;
+  }
+};
+
 // ── Main Settings Page ────────────────────────────────────────────────────────
 export default function SettingsPage() {
   const { toast } = useToast();
+  const navigate = useNavigate();
   const { accent, setAccent } = useAccentColor();
   const [activeSection, setActiveSection] = useState("appearance");
   const { settings: navSettings, update: updateNav, resetDefaults: resetNavDefaults } = useNavSettings();
@@ -363,11 +436,20 @@ export default function SettingsPage() {
   const [loadingReleases, setLoadingReleases] = useState(false);
   const [updateAvailable, setUpdateAvailable] = useState<{ tag: string; url: string; body: string; tauriUpdate?: any } | null>(null);
 
+  // Shortcuts
+  const [shortcuts, setShortcuts] = useState<ShortcutDef[]>(loadShortcuts);
+  const [editingShortcut, setEditingShortcut] = useState<string | null>(null);
+  const [capturedKeys, setCapturedKeys] = useState<string>("");
+
   // Drag state for nav reorder
   const [dragIndex, setDragIndex] = useState<number | null>(null);
 
   // Data stats
   const [storageUsed, setStorageUsed] = useState("—");
+
+  // G-key sequence handler
+  const gPendingRef = useRef(false);
+  const gTimeoutRef = useRef<ReturnType<typeof setTimeout>>();
 
   useEffect(() => {
     document.documentElement.style.fontSize = `${zoom}%`;
@@ -388,10 +470,8 @@ export default function SettingsPage() {
 
   const fetchGithubInfo = useCallback(async () => {
     try {
-      const [repoRes] = await Promise.all([
-        fetch(`https://api.github.com/repos/${GITHUB_REPO}`),
-      ]);
-      const repo = await repoRes.json();
+      const res = await fetch(`https://api.github.com/repos/${GITHUB_REPO}`);
+      const repo = await res.json();
       setGithubStars(repo.stargazers_count);
     } catch { /* silent */ }
   }, []);
@@ -413,32 +493,64 @@ export default function SettingsPage() {
     }
   }, [activeSection, fetchGithubInfo, fetchReleases]);
 
+  // Keyboard shortcuts - G then X sequence
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.ctrlKey && e.key === 'k') { e.preventDefault(); return; }
-      if (e.altKey || e.metaKey) {
-        switch (e.key.toLowerCase()) {
-          case 'h': e.preventDefault(); window.location.href = '/'; break;
-          case 'm': e.preventDefault(); window.location.href = '/movies'; break;
-          case 's': e.preventDefault(); window.location.href = '/series'; break;
+      // Don't trigger shortcuts when typing in inputs
+      const tag = (e.target as HTMLElement).tagName;
+      if (tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT") return;
+      if (editingShortcut) return;
+
+      // Ctrl+K: search
+      if (e.ctrlKey && e.key === "k") {
+        e.preventDefault();
+        return;
+      }
+
+      // F11: fullscreen
+      if (e.key === "F11") {
+        e.preventDefault();
+        if (!document.fullscreenElement) document.documentElement.requestFullscreen();
+        else document.exitFullscreen();
+        return;
+      }
+
+      // Escape
+      if (e.key === "Escape") {
+        const closeButton = document.querySelector('[data-testid="close-button"]') as HTMLButtonElement;
+        if (closeButton) closeButton.click();
+        return;
+      }
+
+      // G-key sequence
+      if (e.key === "g" || e.key === "G") {
+        if (!gPendingRef.current) {
+          gPendingRef.current = true;
+          clearTimeout(gTimeoutRef.current);
+          gTimeoutRef.current = setTimeout(() => { gPendingRef.current = false; }, 800);
+          return;
         }
       }
-      switch (e.key) {
-        case 'Escape':
-          const closeButton = document.querySelector('[data-testid="close-button"]') as HTMLButtonElement;
-          if (closeButton) closeButton.click();
-          break;
-        case 'f':
-        case 'F11':
+
+      if (gPendingRef.current) {
+        gPendingRef.current = false;
+        clearTimeout(gTimeoutRef.current);
+        const secondKey = e.key.toUpperCase();
+        // Find matching shortcut
+        const match = shortcuts.find(s => {
+          const m = s.keys.match(/^G then (.+)$/);
+          return m && m[1].toUpperCase() === secondKey;
+        });
+        if (match?.route) {
           e.preventDefault();
-          if (!document.fullscreenElement) document.documentElement.requestFullscreen();
-          else document.exitFullscreen();
-          break;
+          navigate(match.route);
+        }
       }
     };
-    document.addEventListener('keydown', handleKeyDown);
-    return () => document.removeEventListener('keydown', handleKeyDown);
-  }, []);
+
+    document.addEventListener("keydown", handleKeyDown);
+    return () => document.removeEventListener("keydown", handleKeyDown);
+  }, [shortcuts, navigate, editingShortcut]);
 
   const checkForUpdate = async () => {
     setCheckingUpdate(true);
@@ -448,12 +560,12 @@ export default function SettingsPage() {
     try {
       let isTauri = false;
       try {
-        // Check if Tauri APIs are available
         await import("@tauri-apps/api/core");
         isTauri = true;
       } catch { isTauri = false; }
 
       if (isTauri) {
+        const { check } = await import("@tauri-apps/plugin-updater");
         const update = await check();
         if (update?.available) {
           setUpdateStatus(`🆕 Update available: ${update.version}`);
@@ -496,7 +608,10 @@ export default function SettingsPage() {
       setUpdateStatus("⚡ Installing update...");
       await updateAvailable.tauriUpdate.install();
       setUpdateStatus("✅ Update installed! Restarting app...");
-      setTimeout(async () => { await relaunch(); }, 1500);
+      setTimeout(async () => {
+        const { relaunch } = await import("@tauri-apps/plugin-process");
+        await relaunch();
+      }, 1500);
     } catch (error) {
       console.error('Update installation failed:', error);
       setUpdateStatus("❌ Failed to install update.");
@@ -615,6 +730,68 @@ export default function SettingsPage() {
     }
   };
 
+  // Shortcut editing
+  const startEditShortcut = (id: string) => {
+    setEditingShortcut(id);
+    setCapturedKeys("");
+  };
+
+  const handleShortcutKeyCapture = (e: React.KeyboardEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (!editingShortcut) return;
+
+    if (e.key === "Escape") {
+      setEditingShortcut(null);
+      setCapturedKeys("");
+      return;
+    }
+
+    const parts: string[] = [];
+    if (e.ctrlKey) parts.push("Ctrl");
+    if (e.altKey) parts.push("Alt");
+    if (e.shiftKey) parts.push("Shift");
+    if (e.metaKey) parts.push("Meta");
+    
+    const key = e.key.length === 1 ? e.key.toUpperCase() : e.key;
+    if (!["Control", "Alt", "Shift", "Meta"].includes(e.key)) {
+      parts.push(key);
+    }
+
+    if (parts.length > 0 && !["Control", "Alt", "Shift", "Meta"].includes(e.key)) {
+      const combo = parts.join("+");
+      // Check for conflicts
+      const conflict = shortcuts.find(s => s.id !== editingShortcut && s.keys === combo);
+      if (conflict) {
+        toast({ title: `Conflict: "${combo}" is already used for "${conflict.action}"`, variant: "destructive" });
+        return;
+      }
+      
+      const updated = shortcuts.map(s => s.id === editingShortcut ? { ...s, keys: combo } : s);
+      setShortcuts(updated);
+      saveShortcuts(updated);
+      setEditingShortcut(null);
+      setCapturedKeys("");
+      toast({ title: `Shortcut updated to ${combo}` });
+    }
+  };
+
+  const resetShortcut = (id: string) => {
+    const def = DEFAULT_SHORTCUTS.find(s => s.id === id);
+    if (!def) return;
+    const updated = shortcuts.map(s => s.id === id ? { ...s, keys: def.defaultKeys } : s);
+    setShortcuts(updated);
+    saveShortcuts(updated);
+    toast({ title: "Shortcut reset to default" });
+  };
+
+  const resetAllShortcuts = () => {
+    const defaults = DEFAULT_SHORTCUTS.map(d => ({ ...d }));
+    setShortcuts(defaults);
+    saveShortcuts(defaults);
+    toast({ title: "All shortcuts reset to defaults" });
+  };
+
   const renderSection = () => {
     switch (activeSection) {
       case "appearance":
@@ -647,7 +824,7 @@ export default function SettingsPage() {
                 {ACCENT_OPTIONS.map(c => (
                   <button key={c.name} onClick={() => setAccent(c.name as any)} title={c.label}
                     className={`group flex flex-col items-center gap-2 p-2 rounded-xl transition-all ${accent === c.name ? "bg-primary/10 ring-2 ring-primary" : "hover:bg-secondary/50"}`}>
-                    <div className={`w-9 h-9 rounded-full transition-transform group-hover:scale-110`}
+                    <div className="w-9 h-9 rounded-full transition-transform group-hover:scale-110"
                       style={{ background: `hsl(${c.preview})`, boxShadow: accent === c.name ? `0 0 12px hsl(${c.preview}/0.6)` : undefined }} />
                     <span className="text-[9px] text-muted-foreground">{c.label}</span>
                   </button>
@@ -706,7 +883,7 @@ export default function SettingsPage() {
                   <div className="font-medium text-foreground">Auto-hide on Scroll</div>
                   <div className="text-xs text-muted-foreground">Navbar hides when you scroll down, reappears on scroll up</div>
                 </div>
-                <Toggle checked={navSettings.autoHide} onChange={v => updateNav({ autoHide: v })} />
+                <Switch checked={navSettings.autoHide} onCheckedChange={v => updateNav({ autoHide: v })} />
               </div>
             </div>
 
@@ -826,9 +1003,9 @@ export default function SettingsPage() {
 
             <div className="rounded-xl border border-border/50 bg-card/50 p-4 text-xs text-muted-foreground space-y-1">
               <p className="font-medium text-foreground">How to get API keys:</p>
-              <p>🎬 <strong>TMDB:</strong> <a href="https://www.themoviedb.org/settings/api" target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">themoviedb.org/settings/api</a> — free account required</p>
-              <p>⭐ <strong>OMDB:</strong> <a href="https://www.omdbapi.com/apikey.aspx" target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">omdbapi.com/apikey.aspx</a> — 1000 req/day free</p>
-              <p>📺 <strong>TVDB:</strong> <a href="https://thetvdb.com/api-information" target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">thetvdb.com/api-information</a> — free registration</p>
+              <p>🎬 <strong>TMDB:</strong> <button onClick={() => openExternal("https://www.themoviedb.org/settings/api")} className="text-primary hover:underline">themoviedb.org/settings/api</button> — free account required</p>
+              <p>⭐ <strong>OMDB:</strong> <button onClick={() => openExternal("https://www.omdbapi.com/apikey.aspx")} className="text-primary hover:underline">omdbapi.com/apikey.aspx</button> — 1000 req/day free</p>
+              <p>📺 <strong>TVDB:</strong> <button onClick={() => openExternal("https://thetvdb.com/api-information")} className="text-primary hover:underline">thetvdb.com/api-information</button> — free registration</p>
             </div>
           </div>
         );
@@ -840,12 +1017,13 @@ export default function SettingsPage() {
 
             <div className="rounded-xl border border-border bg-card p-4 space-y-4">
               <div className="font-semibold text-foreground">Image Quality</div>
+              <p className="text-xs text-muted-foreground">Controls the resolution of movie/series poster images loaded from TMDB</p>
               <div className="grid grid-cols-2 gap-2">
                 {[
-                  { id: "low", label: "Low", desc: "Saves data" },
-                  { id: "medium", label: "Medium", desc: "Balanced" },
-                  { id: "high", label: "High", desc: "Best quality" },
-                  { id: "auto", label: "Auto", desc: "Based on connection" },
+                  { id: "low", label: "Low", desc: "~200px wide · Saves data" },
+                  { id: "medium", label: "Medium", desc: "~342px wide · Balanced" },
+                  { id: "high", label: "High", desc: "~500px wide · Best quality" },
+                  { id: "auto", label: "Auto", desc: "Based on your connection speed" },
                 ].map(q => (
                   <button key={q.id} onClick={() => { setImageQuality(q.id); localStorage.setItem("image_quality", q.id); toast({ title: `Image quality: ${q.label}` }); }}
                     className={`p-3 rounded-xl border-2 text-left transition-all ${imageQuality === q.id ? "border-primary bg-primary/10" : "border-border hover:border-primary/50"}`}>
@@ -864,14 +1042,15 @@ export default function SettingsPage() {
               <div className="flex items-center justify-between p-4">
                 <div>
                   <div className="font-medium text-foreground">Show Adult Content</div>
-                  <div className="text-xs text-muted-foreground">Include R-rated and adult titles in results</div>
+                  <div className="text-xs text-muted-foreground">Include R-rated and adult titles in search/discover results</div>
                 </div>
-                <Toggle checked={showAdult} onChange={v => { setShowAdult(v); localStorage.setItem("show_adult", String(v)); }} />
+                <Switch checked={showAdult} onCheckedChange={v => { setShowAdult(v); localStorage.setItem("show_adult", String(v)); }} />
               </div>
             </div>
 
             <div className="rounded-xl border border-border bg-card p-4 space-y-3">
               <div className="font-semibold text-foreground">Card Density</div>
+              <p className="text-xs text-muted-foreground">Affects the number of columns in grid views</p>
               {["compact", "normal", "large"].map(d => {
                 const current = localStorage.getItem("card_density") || "normal";
                 return (
@@ -933,7 +1112,7 @@ export default function SettingsPage() {
                     <div className="font-medium text-foreground">{item.label}</div>
                     <div className="text-xs text-muted-foreground">{item.desc}</div>
                   </div>
-                  <Toggle checked={item.checked} onChange={item.onChange} />
+                  <Switch checked={item.checked} onCheckedChange={item.onChange} />
                 </div>
               ))}
             </div>
@@ -994,39 +1173,94 @@ export default function SettingsPage() {
           </div>
         );
 
+      case "shortcuts":
+        return (
+          <div className="space-y-6">
+            <div className="flex items-center justify-between">
+              <h2 className="text-xl font-bold text-foreground">Keyboard Shortcuts</h2>
+              <button onClick={resetAllShortcuts} className="text-xs text-primary hover:underline flex items-center gap-1">
+                <RotateCcw className="w-3 h-3" /> Reset all
+              </button>
+            </div>
+            <p className="text-sm text-muted-foreground">Click on a shortcut to rebind it. Press Escape to cancel.</p>
+            <div className="rounded-xl border border-border bg-card divide-y divide-border">
+              {shortcuts.map(shortcut => (
+                <div key={shortcut.id} className="flex items-center justify-between px-4 py-3">
+                  <span className="text-sm text-foreground">{shortcut.action}</span>
+                  <div className="flex items-center gap-2">
+                    {editingShortcut === shortcut.id ? (
+                      <div
+                        tabIndex={0}
+                        onKeyDown={handleShortcutKeyCapture}
+                        className="px-3 py-1.5 text-xs bg-primary/20 rounded border-2 border-primary font-mono text-primary animate-pulse focus:outline-none"
+                        autoFocus
+                      >
+                        Press keys...
+                      </div>
+                    ) : (
+                      <button
+                        onClick={() => startEditShortcut(shortcut.id)}
+                        className="px-2 py-1 text-xs bg-muted rounded border border-border font-mono text-muted-foreground hover:border-primary/50 hover:text-foreground transition-colors"
+                      >
+                        {shortcut.keys}
+                      </button>
+                    )}
+                    {shortcut.keys !== shortcut.defaultKeys && (
+                      <button
+                        onClick={() => resetShortcut(shortcut.id)}
+                        className="p-1 text-muted-foreground hover:text-foreground transition-colors"
+                        title="Reset to default"
+                      >
+                        <RotateCcw size={11} />
+                      </button>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+            <div className="rounded-xl bg-secondary/30 border border-border p-3 text-xs text-muted-foreground space-y-1">
+              <p className="font-medium text-foreground">Tips:</p>
+              <p>• "G then X" shortcuts: Press G, then quickly press the second key</p>
+              <p>• Click any shortcut to change its binding</p>
+              <p>• Conflicts are automatically detected</p>
+            </div>
+          </div>
+        );
+
       case "about":
         return (
           <div className="space-y-6">
             <h2 className="text-xl font-bold text-foreground">About</h2>
 
+            {/* App Card */}
             <div className="rounded-xl border border-border bg-card p-6 space-y-4">
               <div className="flex items-center gap-4">
-                <div className="w-14 h-14 rounded-2xl bg-primary/10 flex items-center justify-center overflow-hidden">
+                <div className="w-16 h-16 rounded-2xl bg-primary/10 flex items-center justify-center overflow-hidden shadow-lg shadow-primary/20">
                   <img src={appIcon} alt="Movie Tracker" className="w-full h-full object-cover" />
                 </div>
                 <div>
                   <h3 className="text-lg font-bold text-foreground">Movie Tracker</h3>
                   <div className="flex items-center gap-2">
-                    <span className="text-xs text-muted-foreground">v{APP_VERSION}</span>
-                    <span className="w-1 h-1 rounded-full bg-muted-foreground" />
-                    <span className="text-xs text-muted-foreground">Built with React + Vite</span>
+                    <Badge variant="secondary" className="text-xs">v{APP_VERSION}</Badge>
+                    <span className="text-xs text-muted-foreground">Built with React + Vite + Tauri</span>
                   </div>
                 </div>
               </div>
               <p className="text-sm text-muted-foreground leading-relaxed">
-                A beautiful Netflix-style movie and series tracker. Discover, track, and organize your watching journey.
+                A beautiful Netflix-style movie and series tracker. Discover, track, and organize your watching journey with a stunning UI, offline support, and deep customization.
               </p>
-              <div className="flex items-center gap-1 text-sm text-muted-foreground">
-                Made with <Heart size={14} className="text-red-400 fill-red-400 mx-1" /> by{" "}
-                <a href={`https://github.com/yetemgetaB`} target="_blank" rel="noopener noreferrer"
-                  className="text-primary hover:underline font-medium">Yetemgeta Bekele</a>
+              <div className="flex flex-wrap gap-1.5">
+                {["React", "TypeScript", "Tailwind CSS", "Vite", "Tauri", "TMDB API"].map(tech => (
+                  <Badge key={tech} variant="outline" className="text-[10px] border-border/50">{tech}</Badge>
+                ))}
               </div>
             </div>
 
+            {/* GitHub */}
             <div className="rounded-xl border border-border bg-card p-4 space-y-3">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
-                  <svg viewBox="0 0 24 24" className="w-5 h-5 fill-foreground"><path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0 0 24 12c0-6.63-5.37-12-12-12z" /></svg>
+                  <SocialIcon type="github" size={20} />
                   <div>
                     <div className="font-semibold text-foreground text-sm">GitHub Repository</div>
                     <div className="text-xs text-muted-foreground">{GITHUB_REPO}</div>
@@ -1038,14 +1272,15 @@ export default function SettingsPage() {
                       <Star size={12} fill="currentColor" /> {githubStars}
                     </div>
                   )}
-                  <a href={GITHUB_URL} target="_blank" rel="noopener noreferrer"
+                  <button onClick={() => openExternal(GITHUB_URL)}
                     className="px-3 py-1.5 rounded-lg bg-secondary text-xs text-foreground hover:bg-secondary/80 flex items-center gap-1.5">
                     <ExternalLink size={11} /> View
-                  </a>
+                  </button>
                 </div>
               </div>
             </div>
 
+            {/* Updates */}
             <div className="rounded-xl border border-border bg-card p-4 space-y-3">
               <div className="flex items-center justify-between">
                 <div>
@@ -1068,6 +1303,7 @@ export default function SettingsPage() {
               )}
             </div>
 
+            {/* Changelog */}
             <div className="space-y-3">
               <div className="flex items-center justify-between">
                 <div className="font-semibold text-foreground">Changelog</div>
@@ -1075,7 +1311,7 @@ export default function SettingsPage() {
               </div>
               {releases.length === 0 && !loadingReleases ? (
                 <div className="rounded-xl border border-border bg-card p-6 text-center text-sm text-muted-foreground">
-                  No releases found. <a href={GITHUB_URL} target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">Check GitHub</a>
+                  No releases found. <button onClick={() => openExternal(GITHUB_URL)} className="text-primary hover:underline">Check GitHub</button>
                 </div>
               ) : (
                 <div className="space-y-2">
@@ -1086,24 +1322,76 @@ export default function SettingsPage() {
           </div>
         );
 
-      case "shortcuts":
+      case "developer":
         return (
           <div className="space-y-6">
-            <h2 className="text-xl font-bold text-foreground">Keyboard Shortcuts</h2>
-            <div className="rounded-xl border border-border bg-card divide-y divide-border">
-              {[
-                ["Search", "Ctrl + K"],
-                ["Go to Home", "G then H"],
-                ["Go to Movies", "G then M"],
-                ["Go to Series", "G then S"],
-                ["Close / Back", "Escape"],
-                ["Toggle Fullscreen", "F"],
-              ].map(([action, shortcut]) => (
-                <div key={action} className="flex items-center justify-between px-4 py-3">
-                  <span className="text-sm text-foreground">{action}</span>
-                  <kbd className="px-2 py-1 text-xs bg-muted rounded border border-border font-mono text-muted-foreground">{shortcut}</kbd>
+            <h2 className="text-xl font-bold text-foreground">Developer</h2>
+
+            {/* Developer profile card */}
+            <div className="rounded-xl border border-primary/20 bg-gradient-to-br from-primary/5 to-card p-6 space-y-5">
+              <div className="flex items-center gap-4">
+                <div className="w-20 h-20 rounded-2xl bg-primary/10 border-2 border-primary/20 flex items-center justify-center overflow-hidden shadow-lg shadow-primary/20">
+                  <div className="w-full h-full bg-gradient-to-br from-primary/30 to-primary/10 flex items-center justify-center">
+                    <User size={36} className="text-primary" />
+                  </div>
                 </div>
-              ))}
+                <div>
+                  <h3 className="text-xl font-bold text-foreground">Yetemgeta Bekele</h3>
+                  <p className="text-sm text-muted-foreground">Full-Stack Developer</p>
+                  <p className="text-xs text-muted-foreground mt-1">Creator of Movie Tracker</p>
+                </div>
+              </div>
+
+              <p className="text-sm text-muted-foreground leading-relaxed">
+                Passionate about building beautiful, functional apps with modern web technologies. Movie Tracker is a labor of love — combining my passion for film with clean UI/UX design.
+              </p>
+
+              <div className="flex items-center gap-1 text-sm text-muted-foreground">
+                Made with <Heart size={14} className="text-red-400 fill-red-400 mx-1" /> and lots of ☕
+              </div>
+            </div>
+
+            {/* Social links */}
+            <div className="rounded-xl border border-border bg-card p-4 space-y-4">
+              <div className="font-semibold text-foreground">Connect with me</div>
+              <div className="grid grid-cols-2 gap-2">
+                {DEVELOPER_LINKS.map(link => (
+                  <button
+                    key={link.label}
+                    onClick={() => openExternal(link.url)}
+                    className="flex items-center gap-3 p-3 rounded-xl border border-border/50 hover:border-primary/30 hover:bg-secondary/50 transition-all text-left group"
+                  >
+                    <div className="w-8 h-8 rounded-lg flex items-center justify-center transition-colors"
+                      style={{ background: `${link.color}15`, color: link.color }}>
+                      <SocialIcon type={link.icon} size={16} />
+                    </div>
+                    <div>
+                      <div className="text-sm font-medium text-foreground group-hover:text-primary transition-colors">{link.label}</div>
+                      <div className="text-[10px] text-muted-foreground truncate max-w-[120px]">
+                        {link.url.replace(/^https?:\/\//, "").replace(/^mailto:/, "")}
+                      </div>
+                    </div>
+                    <ExternalLink size={10} className="ml-auto text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity" />
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Support */}
+            <div className="rounded-xl border border-yellow-500/20 bg-yellow-500/5 p-4 space-y-3">
+              <div className="flex items-center gap-2">
+                <Coffee size={18} className="text-yellow-500" />
+                <div className="font-semibold text-foreground">Support this project</div>
+              </div>
+              <p className="text-sm text-muted-foreground">
+                If you enjoy Movie Tracker, consider buying me a coffee! It helps me keep developing new features and improvements.
+              </p>
+              <button
+                onClick={() => openExternal("https://buymeacoffee.com/yetemgetab")}
+                className="px-4 py-2.5 rounded-xl bg-yellow-500 text-black text-sm font-semibold hover:bg-yellow-400 transition-colors flex items-center gap-2"
+              >
+                <Coffee size={14} /> Buy Me a Coffee
+              </button>
             </div>
           </div>
         );
@@ -1141,7 +1429,7 @@ export default function SettingsPage() {
         <div className="mt-12 pt-6 border-t border-border text-center">
           <p className="text-xs text-muted-foreground flex items-center justify-center gap-1">
             Made with <Heart size={11} className="text-red-400 fill-red-400" /> by{" "}
-            <a href="https://github.com/yetemgetaB" target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">Yetemgeta Bekele</a>
+            <button onClick={() => openExternal("https://github.com/yetemgetaB")} className="text-primary hover:underline">Yetemgeta Bekele</button>
             <span className="mx-1">•</span> v{APP_VERSION}
           </p>
         </div>
@@ -1202,10 +1490,12 @@ export default function SettingsPage() {
                   </>
                 ) : (
                   <>
-                    <a href={updateAvailable.url} target="_blank" rel="noopener noreferrer"
-                      className="flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl bg-primary text-primary-foreground text-sm font-semibold hover:opacity-90 transition-opacity">
+                    <button
+                      onClick={() => openExternal(updateAvailable!.url)}
+                      className="flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl bg-primary text-primary-foreground text-sm font-semibold hover:opacity-90 transition-opacity"
+                    >
                       <ExternalLink size={14} /> View Release on GitHub
-                    </a>
+                    </button>
                     <button onClick={() => setUpdateAvailable(null)}
                       className="px-4 py-2.5 rounded-xl border border-border text-sm text-muted-foreground hover:bg-secondary transition-colors">
                       Later
