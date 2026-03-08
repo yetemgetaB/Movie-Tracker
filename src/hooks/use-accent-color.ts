@@ -7,6 +7,7 @@ export const ACCENT_PRESETS: Record<string, { primary: string; glow: string }> =
   amber: { primary: "45 90% 50%", glow: "45 90% 60%" },
   emerald: { primary: "160 70% 40%", glow: "160 70% 50%" },
   red: { primary: "0 90% 50%", glow: "0 90% 60%" },
+  midnight: { primary: "0 0% 75%", glow: "0 0% 85%" },
 };
 
 export type AccentColor = keyof typeof ACCENT_PRESETS;
@@ -25,6 +26,9 @@ function applyAccent(name: string) {
   r.style.setProperty("--ring", p.primary);
   r.style.setProperty("--sidebar-primary", p.primary);
   r.style.setProperty("--sidebar-ring", p.primary);
+  // Update glow tokens so nav-glow and other glow effects follow accent
+  r.style.setProperty("--glow-soft", `${p.glow} / 0.2`);
+  r.style.setProperty("--glow-medium", `${p.glow} / 0.35`);
 }
 
 export function initAccentColor() {

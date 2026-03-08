@@ -28,6 +28,7 @@ const ACCENT_OPTIONS = [
   { name: "amber", label: "Amber", preview: "45 90% 50%" },
   { name: "emerald", label: "Emerald", preview: "160 70% 40%" },
   { name: "red", label: "Red", preview: "0 90% 50%" },
+  { name: "midnight", label: "Midnight", preview: "0 0% 75%" },
 ];
 
 const NAV_LABEL_MAP: Record<string, string> = {
@@ -63,10 +64,10 @@ const SECTIONS = [
 const DEVELOPER_LINKS = [
   { label: "GitHub", icon: "github", url: "https://github.com/yetemgetaB", color: "#ffffff" },
   { label: "LinkedIn", icon: "linkedin", url: "https://linkedin.com/in/yetemgeta-bekele", color: "#0a66c2" },
-  { label: "Instagram", icon: "instagram", url: "https://instagram.com/yetemgetab", color: "#e4405f" },
-  { label: "Telegram", icon: "telegram", url: "https://t.me/yetemgetab", color: "#26a5e4" },
+  { label: "Instagram", icon: "instagram", url: "https://www.instagram.com/_.yetem._/", color: "#e4405f" },
+  { label: "Telegram", icon: "telegram", url: "https://t.me/Trinity12123", color: "#26a5e4" },
   { label: "Twitter / X", icon: "twitter", url: "https://x.com/yetemgetab", color: "#ffffff" },
-  { label: "Buy Me a Coffee", icon: "coffee", url: "https://buymeacoffee.com/yetemgetab", color: "#ffdd00" },
+  { label: "Buy Me a Coffee", icon: "coffee", url: "https://buymeacoffee.com/yetemgeta", color: "#ffdd00" },
   { label: "Email", icon: "email", url: "mailto:yetemgeta@example.com", color: "#ea4335" },
   { label: "Website", icon: "globe", url: "https://yetemgeta.dev", color: "#06b6d4" },
 ];
@@ -925,7 +926,7 @@ export default function SettingsPage() {
             <div className="rounded-xl border border-border bg-card p-4 space-y-4">
               <div>
                 <div className="font-semibold text-foreground">Reorder & Visibility</div>
-                <div className="text-xs text-muted-foreground">Drag to reorder, toggle to show/hide. Hidden items appear on hover (like Windows taskbar).</div>
+                <div className="text-xs text-muted-foreground">Drag to reorder, toggle to show/hide. Hidden items are completely removed from the nav.</div>
               </div>
               <div className="space-y-1">
                 {navSettings.order.map((path, index) => {
@@ -1387,7 +1388,7 @@ export default function SettingsPage() {
                 If you enjoy Movie Tracker, consider buying me a coffee! It helps me keep developing new features and improvements.
               </p>
               <button
-                onClick={() => openExternal("https://buymeacoffee.com/yetemgetab")}
+                onClick={() => openExternal("https://buymeacoffee.com/yetemgeta")}
                 className="px-4 py-2.5 rounded-xl bg-yellow-500 text-black text-sm font-semibold hover:bg-yellow-400 transition-colors flex items-center gap-2"
               >
                 <Coffee size={14} /> Buy Me a Coffee

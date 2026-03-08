@@ -7,6 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { tmdbApi, omdbApi, img, imgOriginal, hasTmdbKey, hasOmdbKey } from "@/lib/tmdb";
+import WhereToWatch from "@/components/WhereToWatch";
 import { addToCollection, isInCollection, type CollectionMovie } from "@/lib/collection";
 import { saveProgress } from "@/lib/watchProgress";
 import RatingBadge from "@/components/RatingBadge";
@@ -78,10 +79,16 @@ const MovieDetailView = ({ movieId, onBack, onSelectMovie }: Props) => {
   const copyPoster = async () => {
     if (!movie?.poster_path) return;
     try {
-      await navigator.clipboard.writeText(imgOriginal(movie.poster_path));
-      toast({ title: "Poster URL copied!" });
+      const response = await fetch(imgOriginal(movie.poster_path));
+      const blob = await response.blob();
+      await navigator.clipboard.write([
+        new ClipboardItem({ [blob.type]: blob }),
+      ]);
+      toast({ title: "Poster copied to clipboard!" });
     } catch {
-      toast({ title: "Failed to copy", variant: "destructive" });
+      // Fallback: copy URL if image copy not supported
+      await navigator.clipboard.writeText(imgOriginal(movie.poster_path));
+      toast({ title: "Poster URL copied (image copy not supported)" });
     }
   };
 
@@ -310,6 +317,9 @@ const MovieDetailView = ({ movieId, onBack, onSelectMovie }: Props) => {
             <ExternalLink size={12} /> View on IMDb
           </a>
         )}
+
+        {/* Where to Watch */}
+        <WhereToWatch tmdbId={movieId} type="movie" fetchFn={tmdbApi.watchProviders} />
 
         {/* Recommendations */}
         {recommendations.length > 0 && (

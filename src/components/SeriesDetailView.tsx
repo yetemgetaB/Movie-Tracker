@@ -8,6 +8,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { tmdbSeriesApi, omdbApi, img, imgOriginal, hasTmdbKey, hasOmdbKey } from "@/lib/tmdb";
+import WhereToWatch from "@/components/WhereToWatch";
 import { addToCollection, isInCollection, type CollectionSeries } from "@/lib/collection";
 import { saveProgress } from "@/lib/watchProgress";
 import RatingBadge from "@/components/RatingBadge";
@@ -88,10 +89,16 @@ const SeriesDetailView = ({ seriesId, onBack, onSelectSeries }: Props) => {
   const copyPoster = async () => {
     if (!series?.poster_path) return;
     try {
-      await navigator.clipboard.writeText(imgOriginal(series.poster_path));
-      toast({ title: "Poster URL copied!" });
+      const response = await fetch(imgOriginal(series.poster_path));
+      const blob = await response.blob();
+      await navigator.clipboard.write([
+        new ClipboardItem({ [blob.type]: blob }),
+      ]);
+      toast({ title: "Poster copied to clipboard!" });
     } catch {
-      toast({ title: "Failed to copy", variant: "destructive" });
+      // Fallback: copy URL if image copy not supported
+      await navigator.clipboard.writeText(imgOriginal(series.poster_path));
+      toast({ title: "Poster URL copied (image copy not supported)" });
     }
   };
 
@@ -368,6 +375,9 @@ const SeriesDetailView = ({ seriesId, onBack, onSelectSeries }: Props) => {
             <ExternalLink size={12} /> View on IMDb
           </a>
         )}
+
+        {/* Where to Watch */}
+        <WhereToWatch tmdbId={seriesId} type="series" fetchFn={tmdbSeriesApi.watchProviders} />
 
         {/* Recommendations */}
         {recommendations.length > 0 && (
