@@ -160,6 +160,42 @@ const AnalyticsPage = () => {
   // Achievements
   const achievements = useMemo(() => getAllAchievementsWithStatus(), [collection]);
 
+  // User vs IMDb scatter data
+  const scatterData = useMemo(() => {
+    return collection
+      .filter(i => i.userRating && i.userRating !== "—" && i.imdb && i.imdb !== "—")
+      .map(i => {
+        const userR = parseFloat(i.userRating);
+        const imdbStr = i.imdb.replace("/10", "");
+        const imdbR = parseFloat(imdbStr);
+        if (isNaN(userR) || isNaN(imdbR)) return null;
+        return { title: i.title, userRating: userR, imdbRating: imdbR, type: i.type };
+      })
+      .filter(Boolean);
+  }, [collection]);
+
+  // Year in review
+  const yearInReview = useMemo(() => {
+    const year = new Date().getFullYear().toString();
+    const thisYear = collection.filter(i => i.addedAt?.startsWith(year));
+    const yrMovies = thisYear.filter(i => i.type === "movie");
+    const yrSeries = thisYear.filter(i => i.type === "series");
+    const yrRated = thisYear.filter(i => i.userRating && i.userRating !== "—" && !isNaN(parseFloat(i.userRating)));
+    const avgR = yrRated.length ? (yrRated.reduce((s, i) => s + parseFloat(i.userRating), 0) / yrRated.length).toFixed(1) : "—";
+    const runtime = yrMovies.reduce((s, m) => s + ((m as any).runtime || 90), 0);
+    return { year, total: thisYear.length, movies: yrMovies.length, series: yrSeries.length, avgRating: avgR, hours: Math.round(runtime / 60) };
+  }, [collection]);
+
+  // Watch goal
+  const [goalInput, setGoalInput] = useState("");
+  const currentGoal = getGoal();
+  const monthlyRuntime = useMemo(() => {
+    const monthKey = getCurrentMonthKey();
+    return movies
+      .filter(m => m.addedAt?.startsWith(monthKey))
+      .reduce((s, m) => s + ((m as any).runtime || 90), 0);
+  }, [movies]);
+
   // Watch heatmap data (last 365 days)
   const heatmapData = useMemo(() => {
     const days: Record<string, number> = {};
