@@ -65,10 +65,6 @@ function getGlowStyle(glowColor: string): React.CSSProperties {
   } as React.CSSProperties;
 }
 
-const BottomNav = () => {
-  const location = useLocation();
-  const { settings } = useNavSettings();
-  const { visible, setHovered } = useAutoHide(settings.autoHide, settings.position);
   const [showHidden, setShowHidden] = useState(false);
 
   const visibleItems = settings.order.filter(p => settings.visibleItems.includes(p));
