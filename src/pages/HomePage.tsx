@@ -365,11 +365,21 @@ const OfflineBanner = () => (
   </div>
 );
 
+// ─── Mood Filters ─────────────────────────────────────────────────────────────
+const MOOD_FILTERS = [
+  { label: "Feel Good", emoji: "😊", icon: Heart, genres: "35,10751", color: "text-pink-400" },
+  { label: "Thrilling", emoji: "😰", icon: Zap, genres: "53,80", color: "text-yellow-400" },
+  { label: "Mind-Bending", emoji: "🧠", icon: Brain, genres: "878,9648", color: "text-purple-400" },
+  { label: "Laugh Out Loud", emoji: "😂", icon: Laugh, genres: "35", color: "text-green-400" },
+  { label: "Spooky", emoji: "👻", icon: Ghost, genres: "27", color: "text-orange-400" },
+];
+
 // ── Main HomePage ─────────────────────────────────────────────────────────────
 const HomePage = () => {
   const navigate = useNavigate();
   const [selectedItem, setSelectedItem] = useState<{ id: number; type: "movie" | "series" } | null>(null);
   const [heroIndex, setHeroIndex] = useState(0);
+  const [activeMood, setActiveMood] = useState<string | null>(null);
   const hasKey = hasTmdbKey();
   const { isOnline } = useOnlineStatus();
 
@@ -412,6 +422,30 @@ const HomePage = () => {
     queryKey: ["popular-series"],
     queryFn: () => tmdbSeriesApi.popular(),
     enabled: hasKey && isOnline,
+    staleTime: 1000 * 60 * 10,
+  });
+
+  // Recommendations
+  const { data: recommendedMovies = [] } = useQuery({
+    queryKey: ["recommended-movies"],
+    queryFn: () => getRecommendedMovies(),
+    enabled: hasKey && isOnline && getCollection().length > 0,
+    staleTime: 1000 * 60 * 15,
+  });
+
+  const { data: recommendedSeries = [] } = useQuery({
+    queryKey: ["recommended-series"],
+    queryFn: () => getRecommendedSeries(),
+    enabled: hasKey && isOnline && getCollection().length > 0,
+    staleTime: 1000 * 60 * 15,
+  });
+
+  // Mood-based discover
+  const moodGenres = MOOD_FILTERS.find(m => m.label === activeMood)?.genres || "";
+  const { data: moodMovies = [] } = useQuery({
+    queryKey: ["mood-movies", activeMood],
+    queryFn: () => tmdbApi.discover({ with_genres: moodGenres, sort_by: "vote_average.desc", "vote_count.gte": "100" }),
+    enabled: !!activeMood && hasKey && isOnline,
     staleTime: 1000 * 60 * 10,
   });
 
