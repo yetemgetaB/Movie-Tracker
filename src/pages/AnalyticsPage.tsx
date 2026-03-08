@@ -152,6 +152,34 @@ const AnalyticsPage = () => {
     return Object.entries(tags).sort((a, b) => b[1] - a[1]).map(([name, value]) => ({ name, value }));
   }, [collection]);
 
+  // Achievements
+  const achievements = useMemo(() => getAllAchievementsWithStatus(), [collection]);
+
+  // Watch heatmap data (last 365 days)
+  const heatmapData = useMemo(() => {
+    const days: Record<string, number> = {};
+    collection.forEach(i => {
+      if (i.addedAt) {
+        const day = i.addedAt.slice(0, 10);
+        days[day] = (days[day] || 0) + 1;
+      }
+    });
+    // Generate last 52 weeks
+    const weeks: { week: number; days: { date: string; count: number; dayOfWeek: number }[] }[] = [];
+    const today = new Date();
+    for (let w = 51; w >= 0; w--) {
+      const weekDays: { date: string; count: number; dayOfWeek: number }[] = [];
+      for (let d = 0; d < 7; d++) {
+        const date = new Date(today);
+        date.setDate(date.getDate() - (w * 7 + (6 - d)));
+        const dateStr = date.toISOString().slice(0, 10);
+        weekDays.push({ date: dateStr, count: days[dateStr] || 0, dayOfWeek: d });
+      }
+      weeks.push({ week: 51 - w, days: weekDays });
+    }
+    return weeks;
+  }, [collection]);
+
   const exportReport = () => {
     const report = {
       generatedAt: new Date().toISOString(),
@@ -176,6 +204,27 @@ const AnalyticsPage = () => {
     const a = document.createElement("a"); a.href = url; a.download = `movie-tracker-report-${new Date().toISOString().slice(0, 10)}.json`; a.click();
     URL.revokeObjectURL(url);
     toast({ title: "Report exported!" });
+  };
+
+  const handleShareStats = async () => {
+    const text = generateStatsText();
+    const shared = await shareContent({ title: "My Movie Stats", text });
+    if (!shared) toast({ title: "Stats copied to clipboard!" });
+  };
+
+  const handleShareCard = async () => {
+    const dataUrl = await generateShareCard(
+      "My Movie Tracker Stats",
+      `${stats.totalMovies + stats.totalSeries} titles tracked`,
+      [
+        { label: "Movies", value: String(stats.totalMovies) },
+        { label: "Series", value: String(stats.totalSeries) },
+        { label: "Avg Rating", value: stats.avgRating ? stats.avgRating.toFixed(1) : "—" },
+        { label: "Hours Watched", value: `${Math.round(stats.totalRuntime / 60)}h` },
+      ]
+    );
+    const shared = await shareImage(dataUrl, "My Movie Tracker Stats");
+    if (!shared) toast({ title: "Stats card downloaded!" });
   };
 
   if (collection.length === 0) {
