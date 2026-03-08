@@ -264,10 +264,11 @@ const AnalyticsPage = () => {
       </div>
 
       <Tabs defaultValue="genres" className="px-2">
-        <TabsList className="w-full grid grid-cols-4 text-xs">
+        <TabsList className="w-full grid grid-cols-5 text-xs">
           <TabsTrigger value="genres">Genres</TabsTrigger>
           <TabsTrigger value="ratings">Ratings</TabsTrigger>
           <TabsTrigger value="activity">Activity</TabsTrigger>
+          <TabsTrigger value="achievements">🏆</TabsTrigger>
           <TabsTrigger value="more">More</TabsTrigger>
         </TabsList>
 
