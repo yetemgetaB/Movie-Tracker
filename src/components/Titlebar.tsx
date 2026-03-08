@@ -100,9 +100,7 @@ const Titlebar = () => {
           >
             <X size={14} className="text-muted-foreground hover:text-destructive-foreground" />
           </button>
-        </div>
-      )}
-    </div>
+      </div>
   );
 };
 
