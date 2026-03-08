@@ -79,10 +79,16 @@ const MovieDetailView = ({ movieId, onBack, onSelectMovie }: Props) => {
   const copyPoster = async () => {
     if (!movie?.poster_path) return;
     try {
-      await navigator.clipboard.writeText(imgOriginal(movie.poster_path));
-      toast({ title: "Poster URL copied!" });
+      const response = await fetch(imgOriginal(movie.poster_path));
+      const blob = await response.blob();
+      await navigator.clipboard.write([
+        new ClipboardItem({ [blob.type]: blob }),
+      ]);
+      toast({ title: "Poster copied to clipboard!" });
     } catch {
-      toast({ title: "Failed to copy", variant: "destructive" });
+      // Fallback: copy URL if image copy not supported
+      await navigator.clipboard.writeText(imgOriginal(movie.poster_path));
+      toast({ title: "Poster URL copied (image copy not supported)" });
     }
   };
 
