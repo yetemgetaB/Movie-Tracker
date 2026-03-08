@@ -103,6 +103,14 @@ const MovieDetailView = ({ movieId, onBack, onSelectMovie }: Props) => {
 
   const handleAddToCollection = () => {
     if (!movie) return;
+    // Validate rating
+    if (userRating) {
+      const r = parseFloat(userRating);
+      if (isNaN(r) || r < 0 || r > 10) {
+        toast({ title: "Invalid rating", description: "Rating must be between 0 and 10", variant: "destructive" });
+        return;
+      }
+    }
     const item: CollectionMovie = {
       id: movie.id,
       type: "movie",
@@ -126,7 +134,6 @@ const MovieDetailView = ({ movieId, onBack, onSelectMovie }: Props) => {
       addedAt: new Date().toISOString(),
     };
     addToCollection(item);
-    // Save to watch progress
     saveProgress({ id: movie.id, type: "movie", title: movie.title, poster: img(movie.poster_path), progressPercent: 100 });
     toast({ title: `${movie.title} added to Vault!` });
     setShowAddDialog(false);
