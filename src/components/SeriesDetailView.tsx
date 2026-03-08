@@ -91,6 +91,20 @@ const SeriesDetailView = ({ seriesId, onBack, onSelectSeries }: Props) => {
   const realSeasons = series?.seasons.filter((s) => s.season_number > 0) || [];
   const isOngoing = series?.status !== "Ended" && series?.status !== "Canceled";
 
+  // Episode tracker data
+  const { data: expandedSeasonDetail } = useQuery({
+    queryKey: ["season-detail", seriesId, expandedSeason],
+    queryFn: () => tmdbSeriesApi.seasonDetails(seriesId, expandedSeason!),
+    enabled: expandedSeason !== null && hasTmdbKey(),
+  });
+
+  const nextEp = series ? getNextEpisode(
+    seriesId,
+    realSeasons.map(s => ({ seasonNum: s.season_number, episodeCount: s.episode_count }))
+  ) : null;
+
+  const overallProgress = series ? getSeriesProgress(seriesId, series.number_of_episodes) : 0;
+
   const copyPoster = async () => {
     if (!series?.poster_path) return;
     try {
