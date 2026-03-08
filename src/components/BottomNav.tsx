@@ -27,7 +27,7 @@ const LABEL_MAP: Record<string, string> = {
   "/settings": "Settings",
 };
 
-const BottomNav = () => {
+const BottomNav = ({ onVisibilityChange }: { onVisibilityChange?: (visible: boolean) => void }) => {
   const location = useLocation();
   const { settings } = useNavSettings();
   
