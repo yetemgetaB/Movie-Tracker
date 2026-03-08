@@ -318,4 +318,22 @@ export const tmdbSeriesApi = {
       "air_date.lte": endDate,
       sort_by: "first_air_date.asc",
     }).then(r => r.results),
+  watchProviders: (id: number, region = "US") =>
+    tmdb<{ results: Record<string, WatchProviderRegion> }>(`/tv/${id}/watch/providers`).then(r => r.results[region] || null),
 };
+
+// Watch provider types
+export interface WatchProvider {
+  logo_path: string;
+  provider_id: number;
+  provider_name: string;
+  display_priority: number;
+}
+
+export interface WatchProviderRegion {
+  link: string;
+  flatrate?: WatchProvider[];
+  rent?: WatchProvider[];
+  buy?: WatchProvider[];
+}
+
