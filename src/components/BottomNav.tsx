@@ -27,32 +27,35 @@ const LABEL_MAP: Record<string, string> = {
   "/settings": "Settings",
 };
 
-function useAutoHide(enabled: boolean, position: NavPosition) {
-  const [visible, setVisible] = useState(true);
-  const [hovered, setHovered] = useState(false);
+const BottomNav = () => {
+  const location = useLocation();
+  const { settings } = useNavSettings();
+  
+  // Auto-hide logic (inlined to avoid HMR issues with separate hook functions)
+  const [autoHideVisible, setAutoHideVisible] = useState(true);
+  const [navHovered, setNavHovered] = useState(false);
   const lastScrollY = useRef(0);
 
   useEffect(() => {
-    if (!enabled) { setVisible(true); return; }
+    if (!settings.autoHide) { setAutoHideVisible(true); return; }
 
     const handleScroll = () => {
       const currentY = window.scrollY;
       if (currentY < 50) {
-        setVisible(true);
+        setAutoHideVisible(true);
       } else if (currentY > lastScrollY.current + 10) {
-        setVisible(false); // scrolling down
+        setAutoHideVisible(false);
       } else if (currentY < lastScrollY.current - 10) {
-        setVisible(true); // scrolling up
+        setAutoHideVisible(true);
       }
       lastScrollY.current = currentY;
     };
 
     window.addEventListener("scroll", handleScroll, { passive: true });
     return () => window.removeEventListener("scroll", handleScroll);
-  }, [enabled, position]);
+  }, [settings.autoHide, settings.position]);
 
-  return { visible: visible || hovered, setHovered };
-}
+  const visible = autoHideVisible || navHovered;
 
 function getGlowStyle(glowColor: string): React.CSSProperties {
   if (glowColor === "accent") return {};
