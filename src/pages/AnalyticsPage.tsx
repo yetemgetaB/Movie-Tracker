@@ -243,9 +243,14 @@ const AnalyticsPage = () => {
           <h1 className="text-2xl font-bold flex items-center gap-2"><BarChart3 size={22} className="text-primary" /> Analytics</h1>
           <p className="text-xs text-muted-foreground mt-0.5">Your complete viewing insights</p>
         </div>
-        <Button size="sm" variant="outline" onClick={exportReport} className="gap-1.5">
-          <Download size={13} /> Export
-        </Button>
+        <div className="flex gap-2">
+          <Button size="sm" variant="outline" onClick={handleShareStats} className="gap-1.5">
+            <Share2 size={13} /> Share
+          </Button>
+          <Button size="sm" variant="outline" onClick={exportReport} className="gap-1.5">
+            <Download size={13} /> Export
+          </Button>
+        </div>
       </div>
 
       {/* Overview cards */}
