@@ -20,7 +20,8 @@ const Titlebar = () => {
   const [isMaximized, setIsMaximized] = useState(false);
 
   useEffect(() => {
-    setIsTauri(typeof window !== "undefined" && "__TAURI_INTERNALS__" in window);
+    const tauri = typeof window !== "undefined" && "__TAURI_INTERNALS__" in window;
+    setIsTauri(tauri);
   }, []);
 
   const currentSection = ROUTE_TITLES[location.pathname] || "Movie Tracker";
@@ -76,9 +77,8 @@ const Titlebar = () => {
         </span>
       </div>
 
-      {/* Right: Window controls */}
-      {isTauri && (
-        <div className="flex items-center h-full">
+      {/* Right: Window controls — always shown, functional only in Tauri */}
+      <div className="flex items-center h-full">
           <button
             onClick={handleMinimize}
             className="titlebar-btn h-full px-3 flex items-center justify-center hover:bg-secondary/60 transition-colors"
@@ -101,7 +101,6 @@ const Titlebar = () => {
             <X size={14} className="text-muted-foreground hover:text-destructive-foreground" />
           </button>
         </div>
-      )}
     </div>
   );
 };

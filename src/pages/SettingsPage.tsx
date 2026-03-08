@@ -28,6 +28,7 @@ const ACCENT_OPTIONS = [
   { name: "amber", label: "Amber", preview: "45 90% 50%" },
   { name: "emerald", label: "Emerald", preview: "160 70% 40%" },
   { name: "red", label: "Red", preview: "0 90% 50%" },
+  { name: "midnight", label: "Midnight", preview: "0 0% 75%" },
 ];
 
 const NAV_LABEL_MAP: Record<string, string> = {
