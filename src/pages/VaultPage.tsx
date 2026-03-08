@@ -215,15 +215,15 @@ const VaultPage = () => {
     }));
   };
 
-  const handleRemove = (id: number, type: "movie" | "series", title: string) => {
-    removeFromCollection(id, type);
+  const handleRemove = (id: number, _type: "movie" | "series", title: string) => {
+    removeFromCollection(id);
     loadCollection();
     toast({ title: `${title} removed from Vault` });
   };
 
   const handleSaveEdit = (updates: Partial<CollectionItem>) => {
     if (!editItem) return;
-    updateCollectionItem(editItem.id, editItem.type, updates);
+    updateCollectionItem(editItem.id, updates);
     loadCollection();
     toast({ title: `${editItem.title} updated!` });
   };
