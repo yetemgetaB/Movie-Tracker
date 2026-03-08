@@ -1,3 +1,4 @@
+import { useState, useCallback } from "react";
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -5,6 +6,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import AppLayout from "./components/AppLayout";
 import ErrorBoundary from "./components/ErrorBoundary";
+import LoadingScreen from "./components/LoadingScreen";
 import HomePage from "./pages/HomePage";
 import MoviesPage from "./pages/MoviesPage";
 import SeriesPage from "./pages/SeriesPage";
@@ -23,7 +25,12 @@ const LayoutWrapper = ({ children }: { children: React.ReactNode }) => (
 );
 
 const App = () => {
+  const [loading, setLoading] = useState(true);
+  const handleFinished = useCallback(() => setLoading(false), []);
+
   return (
+    <>
+      {loading && <LoadingScreen onFinished={handleFinished} />}
     <QueryClientProvider client={queryClient}>
       <TooltipProvider>
         <Toaster />
@@ -46,6 +53,7 @@ const App = () => {
         </BrowserRouter>
       </TooltipProvider>
     </QueryClientProvider>
+    </>
   );
 };
 
