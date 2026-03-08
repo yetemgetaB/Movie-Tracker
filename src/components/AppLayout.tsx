@@ -1,7 +1,11 @@
 import { ReactNode, useEffect } from "react";
 import { useLocation } from "react-router-dom";
 import BottomNav from "./BottomNav";
+import NotificationBell from "./NotificationBell";
 import { initAccentColor } from "@/hooks/use-accent-color";
+import { initPlugins } from "@/lib/plugins";
+import { checkAchievements } from "@/lib/achievements";
+import { toast } from "@/hooks/use-toast";
 
 interface AppLayoutProps {
   children: ReactNode;
@@ -14,11 +18,26 @@ const AppLayout = ({ children }: AppLayoutProps) => {
     initAccentColor();
     applyStoredTheme();
     applyStoredZoom();
+    initPlugins();
+
+    // Check achievements on navigation
+    const { newlyUnlocked } = checkAchievements();
+    newlyUnlocked.forEach((a) => {
+      toast({ title: `${a.icon} Achievement Unlocked!`, description: `${a.icon} ${a.id.replace(/_/g, " ")}` });
+    });
   }, [location.pathname]);
 
   return (
     <div className="min-h-screen mica-bg">
-      <main className="pb-28">{children}</main>
+      {/* Skip to content for accessibility */}
+      <a href="#main-content" className="sr-only focus:not-sr-only focus:absolute focus:top-2 focus:left-2 focus:z-[100] focus:px-4 focus:py-2 focus:bg-primary focus:text-primary-foreground focus:rounded-lg">
+        Skip to content
+      </a>
+      {/* Notification bell - fixed top right */}
+      <div className="fixed top-3 right-3 z-40">
+        <NotificationBell />
+      </div>
+      <main id="main-content" className="pb-28" role="main">{children}</main>
       <BottomNav />
     </div>
   );
