@@ -2,19 +2,24 @@ import { useState, useMemo } from 'react';
 import {
   BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer,
   PieChart, Pie, Cell, LineChart, Line, CartesianGrid, RadarChart,
-  Radar, PolarGrid, PolarAngleAxis
+  Radar, PolarGrid, PolarAngleAxis, ScatterChart, Scatter, ZAxis
 } from 'recharts';
 import {
   BarChart3, Film, Tv, Star, Clock, Calendar, TrendingUp, Award, Target,
-  Flame, CheckCircle, Download, Tag, Zap, Trophy, Share2
+  Flame, CheckCircle, Download, Tag, Zap, Trophy, Share2, Goal, Sparkles
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Progress } from '@/components/ui/progress';
 import { getCollection } from '@/lib/collection';
 import { getAllAchievementsWithStatus } from '@/lib/achievements';
 import { generateStatsText, shareContent, generateShareCard, shareImage } from '@/lib/sharing';
+import { getGoal, setGoal, getCurrentMonthKey } from '@/lib/watchGoals';
+import ShareProfileCard from '@/components/ShareProfileCard';
+import TopFourGrid from '@/components/TopFourGrid';
 import { toast } from '@/hooks/use-toast';
 
 const COLORS = [
