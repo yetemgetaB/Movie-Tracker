@@ -412,6 +412,25 @@ const AnalyticsPage = () => {
               </div>
             </CardContent>
           </Card>
+          {/* User vs IMDb Scatter */}
+          {scatterData.length > 0 && (
+            <Card className="glass-panel border-border/30">
+              <CardHeader className="pb-2"><CardTitle className="text-sm flex items-center gap-2"><Sparkles size={14} className="text-primary" /> You vs IMDb</CardTitle></CardHeader>
+              <CardContent>
+                <ResponsiveContainer width="100%" height={220}>
+                  <ScatterChart>
+                    <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+                    <XAxis type="number" dataKey="imdbRating" name="IMDb" domain={[0, 10]} tick={{ fontSize: 10, fill: "hsl(var(--muted-foreground))" }} label={{ value: "IMDb", position: "bottom", fontSize: 10, fill: "hsl(var(--muted-foreground))" }} />
+                    <YAxis type="number" dataKey="userRating" name="Your Rating" domain={[0, 10]} tick={{ fontSize: 10, fill: "hsl(var(--muted-foreground))" }} label={{ value: "You", angle: -90, position: "left", fontSize: 10, fill: "hsl(var(--muted-foreground))" }} />
+                    <ZAxis range={[40, 40]} />
+                    <Tooltip contentStyle={CustomTooltipStyle} formatter={(v: any, name: string) => [v, name]} labelFormatter={() => ""} />
+                    <Scatter data={scatterData} fill="hsl(var(--primary))" />
+                  </ScatterChart>
+                </ResponsiveContainer>
+                <p className="text-[10px] text-muted-foreground text-center mt-1">Points above the diagonal = you rate higher than IMDb</p>
+              </CardContent>
+            </Card>
+          )}
         </TabsContent>
 
         {/* Activity tab */}
