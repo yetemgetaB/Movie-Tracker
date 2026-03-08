@@ -217,10 +217,16 @@ const VaultPage = () => {
     }));
   };
 
-  const handleRemove = (id: number, _type: "movie" | "series", title: string) => {
-    removeFromCollection(id);
+  const handleRemove = (id: number, type: "movie" | "series", title: string) => {
+    setDeleteConfirm({ id, type, title });
+  };
+
+  const confirmRemove = () => {
+    if (!deleteConfirm) return;
+    removeFromCollection(deleteConfirm.id);
     loadCollection();
-    toast({ title: `${title} removed from Vault` });
+    toast({ title: `${deleteConfirm.title} removed from Vault` });
+    setDeleteConfirm(null);
   };
 
   const handleSaveEdit = (updates: Partial<CollectionItem>) => {
