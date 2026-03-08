@@ -472,6 +472,78 @@ const AnalyticsPage = () => {
           </Card>
         </TabsContent>
 
+        {/* Goals tab */}
+        <TabsContent value="goals" className="mt-4 space-y-4">
+          {/* Watch Time Goal */}
+          <Card className="glass-panel border-border/30">
+            <CardHeader className="pb-2"><CardTitle className="text-sm flex items-center gap-2"><Goal size={14} className="text-primary" /> Monthly Watch Goal</CardTitle></CardHeader>
+            <CardContent className="space-y-3">
+              {currentGoal ? (
+                <>
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm text-muted-foreground">Target: {currentGoal.targetHours}h</span>
+                    <span className="text-sm font-bold">{Math.round(monthlyRuntime / 60)}h watched</span>
+                  </div>
+                  <Progress value={Math.min(100, (monthlyRuntime / 60 / currentGoal.targetHours) * 100)} className="h-3" />
+                  <p className="text-xs text-muted-foreground">
+                    {monthlyRuntime / 60 >= currentGoal.targetHours
+                      ? "🎉 Goal reached!"
+                      : `${Math.max(0, currentGoal.targetHours - Math.round(monthlyRuntime / 60))}h remaining`}
+                  </p>
+                </>
+              ) : (
+                <div className="space-y-2">
+                  <p className="text-xs text-muted-foreground">Set a monthly watch time goal (hours)</p>
+                  <div className="flex gap-2">
+                    <Input
+                      type="number"
+                      min={1}
+                      placeholder="e.g. 20"
+                      value={goalInput}
+                      onChange={e => setGoalInput(e.target.value)}
+                      className="h-8 text-sm bg-secondary/50 border-border/50"
+                    />
+                    <Button
+                      size="sm"
+                      onClick={() => {
+                        const h = parseInt(goalInput);
+                        if (h > 0) { setGoal(h); setGoalInput(""); toast({ title: `Goal set: ${h}h/month!` }); }
+                      }}
+                    >
+                      Set Goal
+                    </Button>
+                  </div>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+
+          {/* Year in Review */}
+          <Card className="glass-panel border-border/30">
+            <CardHeader className="pb-2"><CardTitle className="text-sm flex items-center gap-2"><Sparkles size={14} className="text-primary" /> {yearInReview.year} Year in Review</CardTitle></CardHeader>
+            <CardContent>
+              <div className="grid grid-cols-2 gap-3">
+                <div className="p-3 rounded-xl bg-primary/10 text-center">
+                  <p className="text-2xl font-black text-primary">{yearInReview.total}</p>
+                  <p className="text-xs text-muted-foreground">Titles This Year</p>
+                </div>
+                <div className="p-3 rounded-xl bg-secondary text-center">
+                  <p className="text-2xl font-black">{yearInReview.hours}h</p>
+                  <p className="text-xs text-muted-foreground">Hours Watched</p>
+                </div>
+                <div className="p-3 rounded-xl bg-secondary text-center">
+                  <p className="text-lg font-bold">{yearInReview.movies} 🎬 / {yearInReview.series} 📺</p>
+                  <p className="text-xs text-muted-foreground">Movies / Series</p>
+                </div>
+                <div className="p-3 rounded-xl bg-secondary text-center">
+                  <p className="text-lg font-bold">{yearInReview.avgRating} ⭐</p>
+                  <p className="text-xs text-muted-foreground">Avg Rating</p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
         {/* Achievements tab */}
         <TabsContent value="achievements" className="mt-4 space-y-4">
           <Card className="glass-panel border-border/30">
