@@ -370,6 +370,9 @@ const SeriesDetailView = ({ seriesId, onBack, onSelectSeries }: Props) => {
           </a>
         )}
 
+        {/* Where to Watch */}
+        <WhereToWatch tmdbId={seriesId} type="series" fetchFn={tmdbSeriesApi.watchProviders} />
+
         {/* Recommendations */}
         {recommendations.length > 0 && (
           <div className="space-y-3">

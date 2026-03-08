@@ -312,6 +312,9 @@ const MovieDetailView = ({ movieId, onBack, onSelectMovie }: Props) => {
           </a>
         )}
 
+        {/* Where to Watch */}
+        <WhereToWatch tmdbId={movieId} type="movie" fetchFn={tmdbApi.watchProviders} />
+
         {/* Recommendations */}
         {recommendations.length > 0 && (
           <div className="space-y-3">
