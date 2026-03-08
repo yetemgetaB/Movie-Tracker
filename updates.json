@@ -1,19 +1,19 @@
 {
-  "version": "1.2.3",
-  "notes": "🎨 App Icon & Visual Improvements\n\n✨ **New Features:**\n- **Updated App Icon** - Fresh new app icon design\n- **Enhanced Branding** - Better visual identity\n- **Improved Meta Tags** - Better SEO and sharing\n- **Professional Look** - More polished appearance\n\n🎨 **Visual Changes:**\n- **Settings Page** - Updated app icon display\n- **HTML Meta** - Enhanced titles and descriptions\n- **Consistent Branding** - Unified app identity\n- **Better Presentation** - Professional appearance\n\n� **Platform Support:**\n- **All Icon Sizes** - Complete icon set for all platforms\n- **Mobile Ready** - Android and iOS icons included\n- **Desktop Support** - Windows, macOS, Linux icons\n- **Web Optimized** - Favicon and meta tags\n\n🎯 **Enhanced Experience:**\n- Better visual recognition\n- Professional app appearance\n- Consistent branding across all platforms\n- Improved user perception\n\n🚀 **Ready for Production!**",
-  "pub_date": "2026-03-01T02:00:00Z",
+  "version": "1.3.0",
+  "notes": "🧭 Navbar Customization, Offline Access & Bug Fixes\n\n✨ **New Features:**\n- **Navbar Customization** — Position (top/bottom/left/right), auto-hide on scroll, custom glow colors, drag-to-reorder items, show/hide items with hover reveal\n- **Offline Mode** — HomePage falls back to your local collection when offline, with offline banner indicator\n- **Navigation Settings** — New 'Navigation' section in Settings with full navbar control\n\n🐛 **Bug Fixes:**\n- **Tauri Updater** — Fixed broken update check and install flow, removed invalid imports\n- **About Icon** — Fixed broken app icon on Settings About page\n- **Vault Page** — Fixed removeFromCollection and updateCollectionItem function signatures\n- **Build Errors** — Resolved all TypeScript compilation errors\n\n🎨 **Improvements:**\n- **Glow Presets** — Choose from 8 glow color presets or use accent color sync\n- **Hidden Nav Items** — Hidden items appear on hover like Windows taskbar\n- **Vertical Nav** — Left/right nav positions with vertical layout\n- **Smooth Transitions** — Auto-hide with scroll direction detection\n\n🚀 **Version 1.3.0 Release!**",
+  "pub_date": "2026-03-08T12:00:00Z",
   "platforms": {
     "windows": {
       "signature": "",
-      "url": "https://github.com/yetemgetaB/Movie-Tracker-Frontend/releases/download/v1.2.3/Movie.Tracker.1.2.3.x64.msi"
+      "url": "https://github.com/yetemgetaB/Movie-Tracker-Frontend/releases/download/v1.3.0/Movie.Tracker.1.3.0.x64.msi"
     },
     "darwin": {
       "signature": "",
-      "url": "https://github.com/yetemgetaB/Movie-Tracker-Frontend/releases/download/v1.2.3/Movie.Tracker.1.2.3.dmg"
+      "url": "https://github.com/yetemgetaB/Movie-Tracker-Frontend/releases/download/v1.3.0/Movie.Tracker.1.3.0.dmg"
     },
     "linux": {
       "signature": "",
-      "url": "https://github.com/yetemgetaB/Movie-Tracker-Frontend/releases/download/v1.2.3/Movie.Tracker.1.2.3.AppImage"
+      "url": "https://github.com/yetemgetaB/Movie-Tracker-Frontend/releases/download/v1.3.0/Movie.Tracker.1.3.0.AppImage"
     }
   }
 }
