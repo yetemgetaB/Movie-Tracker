@@ -20,7 +20,8 @@ const Titlebar = () => {
   const [isMaximized, setIsMaximized] = useState(false);
 
   useEffect(() => {
-    setIsTauri(typeof window !== "undefined" && "__TAURI_INTERNALS__" in window);
+    const tauri = typeof window !== "undefined" && "__TAURI_INTERNALS__" in window;
+    setIsTauri(tauri);
   }, []);
 
   const currentSection = ROUTE_TITLES[location.pathname] || "Movie Tracker";
