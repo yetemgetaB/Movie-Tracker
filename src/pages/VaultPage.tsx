@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from "react";
-import { Database, Search, Film, Tv, ArrowUp, ArrowDown, ArrowUpDown, Trash2, Filter, Edit2, X, Check, Eye, Star, Calendar, Clock } from "lucide-react";
+import { Database, Search, Film, Tv, ArrowUp, ArrowDown, ArrowUpDown, Trash2, Filter, Edit2, X, Check, Eye, Star, Calendar, Clock, AlertTriangle } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
@@ -7,6 +7,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { getCollection, removeFromCollection, updateCollectionItem, type CollectionItem, type CollectionMovie, type CollectionSeries } from "@/lib/collection";
 import { toast } from "@/hooks/use-toast";
 import { useNavigate } from "react-router-dom";
