@@ -37,6 +37,7 @@ function load(): NavSettings {
 
 function save(settings: NavSettings) {
   localStorage.setItem(STORAGE_KEY, JSON.stringify(settings));
+  window.dispatchEvent(new CustomEvent("nav-settings-changed", { detail: settings }));
 }
 
 export function useNavSettings() {
