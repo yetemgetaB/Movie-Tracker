@@ -25,7 +25,12 @@ const LayoutWrapper = ({ children }: { children: React.ReactNode }) => (
 );
 
 const App = () => {
+  const [loading, setLoading] = useState(true);
+  const handleFinished = useCallback(() => setLoading(false), []);
+
   return (
+    <>
+      {loading && <LoadingScreen onFinished={handleFinished} />}
     <QueryClientProvider client={queryClient}>
       <TooltipProvider>
         <Toaster />
