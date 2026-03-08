@@ -116,35 +116,6 @@ function getGlowStyle(glowColor: string): React.CSSProperties {
           );
         })}
 
-        {/* Hidden items revealed on hover */}
-        {showHidden && hiddenItems.length > 0 && (
-          <>
-            <li className={`${isVertical ? "w-6 h-px" : "h-6 w-px"} bg-border/50 mx-1`} />
-            {hiddenItems.map((path) => {
-              const Icon = ICON_MAP[path];
-              const label = LABEL_MAP[path];
-              if (!Icon) return null;
-              const isActive = location.pathname === path ||
-                (path !== "/" && location.pathname.startsWith(path));
-
-              return (
-                <li key={path} className="animate-in fade-in zoom-in-95 duration-150">
-                  <RouterNavLink
-                    to={path}
-                    className={`flex ${isVertical ? "flex-row gap-2 px-3 py-2" : "flex-col gap-0.5 px-3.5 py-2"} items-center rounded-xl transition-all duration-300 ${
-                      isActive
-                        ? "bg-primary/15 glow-text"
-                        : "text-muted-foreground/60 hover:text-foreground hover:bg-secondary/50"
-                    }`}
-                  >
-                    <Icon size={16} strokeWidth={1.5} />
-                    <span className={`${isVertical ? "text-xs" : "text-[9px]"} font-medium`}>{label}</span>
-                  </RouterNavLink>
-                </li>
-              );
-            })}
-          </>
-        )}
       </ul>
     </nav>
   );
