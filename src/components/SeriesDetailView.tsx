@@ -132,6 +132,13 @@ const SeriesDetailView = ({ seriesId, onBack, onSelectSeries }: Props) => {
 
   const handleAddToCollection = () => {
     if (!series) return;
+    if (userRating) {
+      const r = parseFloat(userRating);
+      if (isNaN(r) || r < 0 || r > 10) {
+        toast({ title: "Invalid rating", description: "Rating must be between 0 and 10", variant: "destructive" });
+        return;
+      }
+    }
     const item: CollectionSeries = {
       id: series.id,
       type: "series",
