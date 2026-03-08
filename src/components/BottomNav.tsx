@@ -65,10 +65,7 @@ function getGlowStyle(glowColor: string): React.CSSProperties {
   } as React.CSSProperties;
 }
 
-  const [showHidden, setShowHidden] = useState(false);
-
   const visibleItems = settings.order.filter(p => settings.visibleItems.includes(p));
-  const hiddenItems = settings.order.filter(p => !settings.visibleItems.includes(p));
 
   const isHorizontal = settings.position === "bottom" || settings.position === "top";
   const isVertical = settings.position === "left" || settings.position === "right";
