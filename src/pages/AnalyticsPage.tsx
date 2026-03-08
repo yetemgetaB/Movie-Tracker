@@ -6,13 +6,15 @@ import {
 } from 'recharts';
 import {
   BarChart3, Film, Tv, Star, Clock, Calendar, TrendingUp, Award, Target,
-  Flame, CheckCircle, Download, Tag, Zap
+  Flame, CheckCircle, Download, Tag, Zap, Trophy, Share2
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
 import { getCollection } from '@/lib/collection';
+import { getAllAchievementsWithStatus } from '@/lib/achievements';
+import { generateStatsText, shareContent, generateShareCard, shareImage } from '@/lib/sharing';
 import { toast } from '@/hooks/use-toast';
 
 const COLORS = [
@@ -150,6 +152,34 @@ const AnalyticsPage = () => {
     return Object.entries(tags).sort((a, b) => b[1] - a[1]).map(([name, value]) => ({ name, value }));
   }, [collection]);
 
+  // Achievements
+  const achievements = useMemo(() => getAllAchievementsWithStatus(), [collection]);
+
+  // Watch heatmap data (last 365 days)
+  const heatmapData = useMemo(() => {
+    const days: Record<string, number> = {};
+    collection.forEach(i => {
+      if (i.addedAt) {
+        const day = i.addedAt.slice(0, 10);
+        days[day] = (days[day] || 0) + 1;
+      }
+    });
+    // Generate last 52 weeks
+    const weeks: { week: number; days: { date: string; count: number; dayOfWeek: number }[] }[] = [];
+    const today = new Date();
+    for (let w = 51; w >= 0; w--) {
+      const weekDays: { date: string; count: number; dayOfWeek: number }[] = [];
+      for (let d = 0; d < 7; d++) {
+        const date = new Date(today);
+        date.setDate(date.getDate() - (w * 7 + (6 - d)));
+        const dateStr = date.toISOString().slice(0, 10);
+        weekDays.push({ date: dateStr, count: days[dateStr] || 0, dayOfWeek: d });
+      }
+      weeks.push({ week: 51 - w, days: weekDays });
+    }
+    return weeks;
+  }, [collection]);
+
   const exportReport = () => {
     const report = {
       generatedAt: new Date().toISOString(),
@@ -176,6 +206,27 @@ const AnalyticsPage = () => {
     toast({ title: "Report exported!" });
   };
 
+  const handleShareStats = async () => {
+    const text = generateStatsText();
+    const shared = await shareContent({ title: "My Movie Stats", text });
+    if (!shared) toast({ title: "Stats copied to clipboard!" });
+  };
+
+  const handleShareCard = async () => {
+    const dataUrl = await generateShareCard(
+      "My Movie Tracker Stats",
+      `${stats.totalMovies + stats.totalSeries} titles tracked`,
+      [
+        { label: "Movies", value: String(stats.totalMovies) },
+        { label: "Series", value: String(stats.totalSeries) },
+        { label: "Avg Rating", value: stats.avgRating ? stats.avgRating.toFixed(1) : "—" },
+        { label: "Hours Watched", value: `${Math.round(stats.totalRuntime / 60)}h` },
+      ]
+    );
+    const shared = await shareImage(dataUrl, "My Movie Tracker Stats");
+    if (!shared) toast({ title: "Stats card downloaded!" });
+  };
+
   if (collection.length === 0) {
     return (
       <div className="px-6 pt-6 flex flex-col items-center justify-center min-h-[50vh] gap-4">
@@ -192,9 +243,14 @@ const AnalyticsPage = () => {
           <h1 className="text-2xl font-bold flex items-center gap-2"><BarChart3 size={22} className="text-primary" /> Analytics</h1>
           <p className="text-xs text-muted-foreground mt-0.5">Your complete viewing insights</p>
         </div>
-        <Button size="sm" variant="outline" onClick={exportReport} className="gap-1.5">
-          <Download size={13} /> Export
-        </Button>
+        <div className="flex gap-2">
+          <Button size="sm" variant="outline" onClick={handleShareStats} className="gap-1.5">
+            <Share2 size={13} /> Share
+          </Button>
+          <Button size="sm" variant="outline" onClick={exportReport} className="gap-1.5">
+            <Download size={13} /> Export
+          </Button>
+        </div>
       </div>
 
       {/* Overview cards */}
@@ -208,10 +264,11 @@ const AnalyticsPage = () => {
       </div>
 
       <Tabs defaultValue="genres" className="px-2">
-        <TabsList className="w-full grid grid-cols-4 text-xs">
+        <TabsList className="w-full grid grid-cols-5 text-xs">
           <TabsTrigger value="genres">Genres</TabsTrigger>
           <TabsTrigger value="ratings">Ratings</TabsTrigger>
           <TabsTrigger value="activity">Activity</TabsTrigger>
+          <TabsTrigger value="achievements">🏆</TabsTrigger>
           <TabsTrigger value="more">More</TabsTrigger>
         </TabsList>
 
@@ -347,6 +404,64 @@ const AnalyticsPage = () => {
                 <TrendingUp size={20} className="text-primary mx-auto mb-1" />
                 <p className="text-2xl font-black text-foreground">{streak.longest}</p>
                 <p className="text-xs text-muted-foreground">Best streak (days)</p>
+              </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        {/* Achievements tab */}
+        <TabsContent value="achievements" className="mt-4 space-y-4">
+          <Card className="glass-panel border-border/30">
+            <CardHeader className="pb-2"><CardTitle className="text-sm flex items-center gap-2"><Trophy size={14} className="text-primary" /> Achievements</CardTitle></CardHeader>
+            <CardContent className="grid grid-cols-2 gap-3">
+              {achievements.map(a => (
+                <div key={a.id} className={`p-3 rounded-xl border transition-all ${a.unlocked ? "border-primary/30 bg-primary/5" : "border-border/30 bg-secondary/20 opacity-50"}`}>
+                  <div className="flex items-center gap-2 mb-1">
+                    <span className="text-lg">{a.icon}</span>
+                    <span className="text-xs font-semibold">{a.id.replace(/_/g, " ").replace(/\b\w/g, l => l.toUpperCase())}</span>
+                  </div>
+                  {a.unlocked && a.unlockedAt && (
+                    <p className="text-[9px] text-muted-foreground">Unlocked {new Date(a.unlockedAt).toLocaleDateString()}</p>
+                  )}
+                  {!a.unlocked && <p className="text-[9px] text-muted-foreground">🔒 Locked</p>}
+                </div>
+              ))}
+            </CardContent>
+          </Card>
+
+          {/* Watch Heatmap */}
+          <Card className="glass-panel border-border/30">
+            <CardHeader className="pb-2"><CardTitle className="text-sm flex items-center gap-2"><Calendar size={14} className="text-primary" /> Watch Heatmap</CardTitle></CardHeader>
+            <CardContent>
+              <div className="flex gap-0.5 overflow-x-auto pb-2 scrollbar-hide">
+                {heatmapData.map((week) => (
+                  <div key={week.week} className="flex flex-col gap-0.5">
+                    {week.days.map((day) => (
+                      <div
+                        key={day.date}
+                        title={`${day.date}: ${day.count} item${day.count !== 1 ? "s" : ""}`}
+                        className="w-3 h-3 rounded-sm transition-colors"
+                        style={{
+                          background: day.count === 0
+                            ? "hsl(var(--secondary))"
+                            : day.count === 1
+                            ? "hsl(var(--primary) / 0.3)"
+                            : day.count <= 3
+                            ? "hsl(var(--primary) / 0.6)"
+                            : "hsl(var(--primary))",
+                        }}
+                      />
+                    ))}
+                  </div>
+                ))}
+              </div>
+              <div className="flex items-center gap-2 mt-2 text-[10px] text-muted-foreground">
+                <span>Less</span>
+                <div className="w-3 h-3 rounded-sm" style={{ background: "hsl(var(--secondary))" }} />
+                <div className="w-3 h-3 rounded-sm" style={{ background: "hsl(var(--primary) / 0.3)" }} />
+                <div className="w-3 h-3 rounded-sm" style={{ background: "hsl(var(--primary) / 0.6)" }} />
+                <div className="w-3 h-3 rounded-sm" style={{ background: "hsl(var(--primary))" }} />
+                <span>More</span>
               </div>
             </CardContent>
           </Card>
