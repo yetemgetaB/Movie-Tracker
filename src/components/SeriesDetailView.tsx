@@ -32,6 +32,8 @@ const SeriesDetailView = ({ seriesId, onBack, onSelectSeries }: Props) => {
   const [finishDate, setFinishDate] = useState("");
   const [userRating, setUserRating] = useState("");
   const [selectedTrailerSeason, setSelectedTrailerSeason] = useState<string>("main");
+  const [expandedSeason, setExpandedSeason] = useState<number | null>(null);
+  const [episodeRefresh, setEpisodeRefresh] = useState(0); // trigger re-renders for episode states
 
   const { data: series } = useQuery({
     queryKey: ["series-detail", seriesId],
