@@ -203,12 +203,14 @@ export const tmdbApi = {
     tmdb<{ genres: { id: number; name: string }[] }>("/genre/movie/list").then(r => r.genres),
   tvGenreList: () =>
     tmdb<{ genres: { id: number; name: string }[] }>("/genre/tv/list").then(r => r.genres),
-  upcomingReleases: (startDate: string, endDate: string) =>
+    upcomingReleases: (startDate: string, endDate: string) =>
     tmdb<{ results: TmdbMovie[] }>("/discover/movie", {
       "primary_release_date.gte": startDate,
       "primary_release_date.lte": endDate,
       sort_by: "primary_release_date.asc",
     }).then(r => r.results),
+  watchProviders: (id: number, region = "US") =>
+    tmdb<{ results: Record<string, WatchProviderRegion> }>(`/movie/${id}/watch/providers`).then(r => r.results[region] || null),
 };
 
 export const omdbApi = {
