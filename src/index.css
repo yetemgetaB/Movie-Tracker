@@ -129,6 +129,18 @@
     -ms-overflow-style: none;
     scrollbar-width: none;
   }
+
+  .titlebar {
+    background: hsl(var(--card) / 0.5);
+    backdrop-filter: blur(20px) saturate(140%);
+    -webkit-backdrop-filter: blur(20px) saturate(140%);
+    border-bottom: 1px solid hsl(var(--border) / 0.4);
+  }
+
+  .titlebar-btn {
+    -webkit-app-region: no-drag;
+    app-region: no-drag;
+  }
 }
 
 @keyframes fadeUp {

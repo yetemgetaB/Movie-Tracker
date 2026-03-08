@@ -27,7 +27,7 @@ const LABEL_MAP: Record<string, string> = {
   "/settings": "Settings",
 };
 
-const BottomNav = () => {
+const BottomNav = ({ onVisibilityChange }: { onVisibilityChange?: (visible: boolean) => void }) => {
   const location = useLocation();
   const { settings } = useNavSettings();
   
@@ -56,6 +56,10 @@ const BottomNav = () => {
   }, [settings.autoHide, settings.position]);
 
   const visible = autoHideVisible || navHovered;
+
+  useEffect(() => {
+    onVisibilityChange?.(visible);
+  }, [visible, onVisibilityChange]);
 
 function getGlowStyle(glowColor: string): React.CSSProperties {
   if (glowColor === "accent") return {};

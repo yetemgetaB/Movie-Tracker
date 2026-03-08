@@ -1,4 +1,3 @@
-// Notification Bell component
 import { useState, useEffect, useRef } from "react";
 import { Bell } from "lucide-react";
 import {
@@ -10,10 +9,11 @@ import {
 } from "@/lib/notifications";
 
 interface Props {
+  visible?: boolean;
   onSelectItem?: (id: number, type: "movie" | "series") => void;
 }
 
-const NotificationBell = ({ onSelectItem }: Props) => {
+const NotificationBell = ({ visible = true, onSelectItem }: Props) => {
   const [open, setOpen] = useState(false);
   const [notifications, setNotifications] = useState<AppNotification[]>([]);
   const [unread, setUnread] = useState(0);
@@ -60,13 +60,20 @@ const NotificationBell = ({ onSelectItem }: Props) => {
   };
 
   return (
-    <div ref={ref} className="relative">
+    <div
+      ref={ref}
+      className={`fixed bottom-20 right-4 z-50 transition-all duration-300 ${
+        visible
+          ? "translate-y-0 opacity-100"
+          : "translate-y-10 opacity-0 pointer-events-none"
+      }`}
+    >
       <button
         onClick={() => setOpen(!open)}
-        className="relative p-2 rounded-full hover:bg-secondary/50 transition-colors"
+        className="relative p-2.5 rounded-full bg-card/40 backdrop-blur-xl border border-border/30 hover:bg-card/60 transition-all shadow-lg"
         aria-label="Notifications"
       >
-        <Bell size={18} className="text-muted-foreground" />
+        <Bell size={16} className="text-muted-foreground" />
         {unread > 0 && (
           <span className="absolute -top-0.5 -right-0.5 w-4 h-4 rounded-full bg-primary text-primary-foreground text-[9px] font-bold flex items-center justify-center">
             {unread > 9 ? "9+" : unread}
@@ -75,7 +82,7 @@ const NotificationBell = ({ onSelectItem }: Props) => {
       </button>
 
       {open && (
-        <div className="absolute right-0 top-full mt-2 w-80 max-h-96 overflow-y-auto z-50 glass-panel-strong border border-border/50 rounded-xl shadow-2xl animate-in fade-in zoom-in-95 duration-150">
+        <div className="absolute right-0 bottom-full mb-2 w-80 max-h-96 overflow-y-auto z-50 glass-panel-strong border border-border/50 rounded-xl shadow-2xl animate-in fade-in zoom-in-95 duration-150">
           <div className="flex items-center justify-between p-3 border-b border-border/30">
             <span className="text-sm font-semibold">Notifications</span>
             {unread > 0 && (
