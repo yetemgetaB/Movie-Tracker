@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from "react";
-import { Play, Info, ChevronLeft, ChevronRight, Volume2, VolumeX, AlertCircle, Plus, Star } from "lucide-react";
+import { Play, Info, ChevronLeft, ChevronRight, Volume2, VolumeX, AlertCircle, Plus, Star, WifiOff } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -9,6 +9,7 @@ import { useNavigate } from "react-router-dom";
 import { getCollection } from "@/lib/collection";
 import { getWatchProgress } from "@/lib/watchProgress";
 import { toast } from "@/hooks/use-toast";
+import { useOnlineStatus } from "@/hooks/use-online-status";
 import MovieDetailView from "@/components/MovieDetailView";
 import SeriesDetailView from "@/components/SeriesDetailView";
 
@@ -132,27 +133,14 @@ const MoviePosterCard = ({
         const vw = window.innerWidth;
         const vh = window.innerHeight;
         const cardW = 288;
-        const cardH = 340; // estimated expanded card height
-
-        // Horizontal: center on the card, clamp to viewport
+        const cardH = 340;
         let left = rect.left + rect.width / 2 - cardW / 2;
         if (left + cardW > vw - 8) left = vw - cardW - 8;
         if (left < 8) left = 8;
-
-        // Vertical: prefer appearing above-center of card, flip up if near bottom
         let top = rect.top - 20;
-        if (top + cardH > vh - 16) {
-          top = rect.bottom - cardH + 20; // flip upward
-        }
+        if (top + cardH > vh - 16) top = rect.bottom - cardH + 20;
         if (top < 8) top = 8;
-
-        setCardStyle({
-          position: "fixed",
-          top,
-          left,
-          width: cardW,
-          zIndex: 9999,
-        });
+        setCardStyle({ position: "fixed", top, left, width: cardW, zIndex: 9999 });
         setShowCard(true);
       }
     }, 400);
@@ -365,68 +353,78 @@ const HeroBanner = ({
   );
 };
 
-// ─── Main HomePage ─────────────────────────────────────────────────────────────
+// ── Offline Banner ────────────────────────────────────────────────────────────
+const OfflineBanner = () => (
+  <div className="mx-6 mb-4 p-3 rounded-xl bg-yellow-500/10 border border-yellow-500/20 flex items-center gap-3">
+    <WifiOff size={18} className="text-yellow-500 flex-shrink-0" />
+    <div>
+      <p className="text-sm font-medium text-yellow-500">You're offline</p>
+      <p className="text-xs text-muted-foreground">Showing your saved collection</p>
+    </div>
+  </div>
+);
+
+// ── Main HomePage ─────────────────────────────────────────────────────────────
 const HomePage = () => {
   const navigate = useNavigate();
   const [selectedItem, setSelectedItem] = useState<{ id: number; type: "movie" | "series" } | null>(null);
   const [heroIndex, setHeroIndex] = useState(0);
   const hasKey = hasTmdbKey();
+  const { isOnline } = useOnlineStatus();
 
-  const { data: trendingMovies = [], isLoading: loadingTrending } = useQuery({
+  const { data: trendingMovies = [], isLoading: loadingTrending, isError: trendingError } = useQuery({
     queryKey: ["trending-movies"],
     queryFn: () => tmdbApi.trending(),
-    enabled: hasKey,
+    enabled: hasKey && isOnline,
     staleTime: 1000 * 60 * 5,
   });
 
   const { data: trendingSeries = [] } = useQuery({
     queryKey: ["trending-series"],
     queryFn: () => tmdbSeriesApi.trending(),
-    enabled: hasKey,
+    enabled: hasKey && isOnline,
     staleTime: 1000 * 60 * 5,
   });
 
   const { data: topRatedMovies = [] } = useQuery({
     queryKey: ["top-rated-movies"],
     queryFn: () => tmdbApi.topRated(),
-    enabled: hasKey,
+    enabled: hasKey && isOnline,
     staleTime: 1000 * 60 * 10,
   });
 
   const { data: topRatedSeries = [] } = useQuery({
     queryKey: ["top-rated-series"],
     queryFn: () => tmdbSeriesApi.topRated(),
-    enabled: hasKey,
+    enabled: hasKey && isOnline,
     staleTime: 1000 * 60 * 10,
   });
 
   const { data: nowPlayingMovies = [] } = useQuery({
     queryKey: ["now-playing"],
     queryFn: () => tmdbApi.nowPlaying(),
-    enabled: hasKey,
+    enabled: hasKey && isOnline,
     staleTime: 1000 * 60 * 10,
   });
 
   const { data: popularSeries = [] } = useQuery({
     queryKey: ["popular-series"],
     queryFn: () => tmdbSeriesApi.popular(),
-    enabled: hasKey,
+    enabled: hasKey && isOnline,
     staleTime: 1000 * 60 * 10,
   });
 
-  // Hero trailer
   const heroMovie = trendingMovies[heroIndex];
   const { data: heroVideos = [] } = useQuery({
     queryKey: ["hero-videos", heroMovie?.id],
     queryFn: () => tmdbApi.videos(heroMovie.id),
-    enabled: !!heroMovie,
+    enabled: !!heroMovie && isOnline,
     staleTime: 1000 * 60 * 30,
   });
 
   const trailerKey = heroVideos.find(v => v.site === "YouTube" && v.type === "Trailer")?.key
     || heroVideos.find(v => v.site === "YouTube")?.key;
 
-  // Auto-rotate hero
   useEffect(() => {
     if (trendingMovies.length === 0) return;
     const t = setInterval(() => {
@@ -435,7 +433,6 @@ const HomePage = () => {
     return () => clearInterval(t);
   }, [trendingMovies.length]);
 
-  // Continue watching
   const continueWatching = getWatchProgress();
   const collection = getCollection();
 
@@ -488,10 +485,40 @@ const HomePage = () => {
     );
   }
 
+  // Determine if we should show offline fallback
+  const showOffline = !isOnline || (trendingError && trendingMovies.length === 0);
+  const collectionMovies = collection.filter(c => c.type === "movie");
+  const collectionSeries = collection.filter(c => c.type === "series");
+
+  const mapCollection = (items: typeof collection) => items.map(item => ({
+    id: item.id,
+    title: item.title,
+    poster: item.poster,
+    backdrop: null,
+    year: item.year,
+    rating: parseFloat(item.imdb) || 0,
+  }));
+
   return (
     <div className="relative">
+      {/* Offline banner */}
+      {!isOnline && <div className="pt-6"><OfflineBanner /></div>}
+
       {/* Hero Banner */}
-      {loadingTrending ? (
+      {showOffline ? (
+        // Offline: show a simple collection header
+        collection.length > 0 ? (
+          <div className="px-8 pt-12 pb-8">
+            <h1 className="text-3xl font-bold mb-2">Your Collection</h1>
+            <p className="text-muted-foreground">Browsing offline — {collection.length} items saved locally</p>
+          </div>
+        ) : (
+          <div className="px-8 pt-12 pb-8">
+            <h1 className="text-3xl font-bold mb-2">You're Offline</h1>
+            <p className="text-muted-foreground">Add movies and series to your collection to browse them offline</p>
+          </div>
+        )
+      ) : loadingTrending ? (
         <Skeleton className="w-full h-[75vh]" />
       ) : heroMovie ? (
         <HeroBanner
@@ -502,8 +529,8 @@ const HomePage = () => {
         />
       ) : null}
 
-      {/* Hero dot navigation */}
-      {trendingMovies.length > 0 && (
+      {/* Hero dot navigation (online only) */}
+      {!showOffline && trendingMovies.length > 0 && (
         <div className="flex justify-center gap-2 py-3 -mt-6 relative z-10">
           {trendingMovies.slice(0, 5).map((_, i) => (
             <button
@@ -538,57 +565,29 @@ const HomePage = () => {
           />
         )}
 
-        {/* Trending Now Movies */}
-        <ContentRow
-          title="Trending Now"
-          badge="This Week"
-          items={mapMovies(trendingMovies)}
-          type="movie"
-          onSelectItem={handleSelectItem}
-        />
+        {showOffline ? (
+          <>
+            {collectionMovies.length > 0 && (
+              <ContentRow title="Your Movies" badge="Offline" items={mapCollection(collectionMovies)} type="movie"
+                onSelectItem={(id) => handleSelectItem(id, "movie")} />
+            )}
+            {collectionSeries.length > 0 && (
+              <ContentRow title="Your Series" badge="Offline" items={mapCollection(collectionSeries)} type="series"
+                onSelectItem={(id) => handleSelectItem(id, "series")} />
+            )}
+          </>
+        ) : (
+          <>
+            <ContentRow title="Trending Now" badge="This Week" items={mapMovies(trendingMovies)} type="movie" onSelectItem={handleSelectItem} />
+            <ContentRow title="Trending Series" items={mapSeries(trendingSeries)} type="series" onSelectItem={handleSelectItem} />
+            <ContentRow title="Top Rated Movies" items={mapMovies(topRatedMovies)} type="movie" onSelectItem={handleSelectItem} />
+            <ContentRow title="Now Playing in Theaters" items={mapMovies(nowPlayingMovies)} type="movie" onSelectItem={handleSelectItem} />
+            <ContentRow title="Popular Series" items={mapSeries(popularSeries)} type="series" onSelectItem={handleSelectItem} />
+            <ContentRow title="Top Rated Series" items={mapSeries(topRatedSeries)} type="series" onSelectItem={handleSelectItem} />
+          </>
+        )}
 
-        {/* Trending Series */}
-        <ContentRow
-          title="Trending Series"
-          items={mapSeries(trendingSeries)}
-          type="series"
-          onSelectItem={handleSelectItem}
-        />
-
-        {/* Top Rated Movies */}
-        <ContentRow
-          title="Top Rated Movies"
-          items={mapMovies(topRatedMovies)}
-          type="movie"
-          onSelectItem={handleSelectItem}
-        />
-
-        {/* Now Playing */}
-        <ContentRow
-          title="Now Playing in Theaters"
-          items={mapMovies(nowPlayingMovies)}
-          type="movie"
-          onSelectItem={handleSelectItem}
-        />
-
-        {/* Popular Series */}
-        <ContentRow
-          title="Popular Series"
-          items={mapSeries(popularSeries)}
-          type="series"
-          onSelectItem={handleSelectItem}
-        />
-
-        {/* Top Rated Series */}
-        <ContentRow
-          title="Top Rated Series"
-          items={mapSeries(topRatedSeries)}
-          type="series"
-          onSelectItem={handleSelectItem}
-        />
-
-        {/* From Your Collection */}
-        {collection.length > 0 && (
+        {collection.length > 0 && !showOffline && (
           <ContentRow
             title="From Your Collection"
             badge="Vault"
@@ -608,7 +607,6 @@ const HomePage = () => {
           />
         )}
       </div>
-
     </div>
   );
 };

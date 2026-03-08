@@ -3,17 +3,20 @@ import {
   Settings, Key, Palette, Monitor, Database, Accessibility, Keyboard,
   Eye, EyeOff, CheckCircle, XCircle, Trash2, Download, Upload, RotateCcw,
   Star, RefreshCw, Loader2, ChevronDown,
-  Info, ExternalLink, Heart, Image as ImageIcon, Zap, Tag, GitBranch, DownloadCloud
+  Info, ExternalLink, Heart, Image as ImageIcon, Zap, Tag, GitBranch, DownloadCloud,
+  Navigation, GripVertical, ArrowUp, ArrowDown
 } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
 import { applyStoredTheme } from "@/components/AppLayout";
 import { useAccentColor } from "@/hooks/use-accent-color";
 import { useToast } from "@/hooks/use-toast";
+import { useNavSettings, type NavPosition } from "@/hooks/use-nav-settings";
 import { check } from "@tauri-apps/plugin-updater";
 import { relaunch } from "@tauri-apps/plugin-process";
+import appIcon from "@/assets/app-icon.png";
 
-const APP_VERSION = "1.2.3";
+const APP_VERSION = "1.3.0";
 const GITHUB_REPO = "yetemgetaB/Movie-Tracker";
 const GITHUB_URL = `https://github.com/${GITHUB_REPO}`;
 
@@ -26,8 +29,26 @@ const ACCENT_OPTIONS = [
   { name: "red", label: "Red", preview: "0 90% 50%" },
 ];
 
+const NAV_LABEL_MAP: Record<string, string> = {
+  "/": "Home", "/movies": "Movies", "/series": "Series", "/browse": "Browse",
+  "/library": "Vault", "/watchlist": "Watchlist", "/calendar": "Calendar",
+  "/analytics": "Analytics", "/settings": "Settings",
+};
+
+const GLOW_PRESETS = [
+  { label: "Accent", value: "accent" },
+  { label: "Blue", value: "#3b82f6" },
+  { label: "Purple", value: "#8b5cf6" },
+  { label: "Rose", value: "#f43f5e" },
+  { label: "Amber", value: "#f59e0b" },
+  { label: "Emerald", value: "#10b981" },
+  { label: "Cyan", value: "#06b6d4" },
+  { label: "White", value: "#ffffff" },
+];
+
 const SECTIONS = [
   { id: "appearance", label: "Appearance", icon: Palette },
+  { id: "navigation", label: "Navigation", icon: Navigation },
   { id: "apis", label: "API Keys", icon: Key },
   { id: "display", label: "Display", icon: Monitor },
   { id: "accessibility", label: "Accessibility", icon: Accessibility },
@@ -70,7 +91,6 @@ const ZoomSlider = ({ value, onChange }: { value: number; onChange: (v: number) 
           onChange={e => onChange(Number(e.target.value))}
           className="absolute w-full opacity-0 cursor-pointer h-6"
         />
-        {/* Custom thumb */}
         <div
           className="absolute w-6 h-6 rounded-full bg-primary border-2 border-background shadow-lg shadow-primary/30 transition-all pointer-events-none flex items-center justify-center"
           style={{ left: `calc(${pct}% - 12px)` }}
@@ -78,7 +98,6 @@ const ZoomSlider = ({ value, onChange }: { value: number; onChange: (v: number) 
           <div className="w-1.5 h-1.5 rounded-full bg-white/80" />
         </div>
       </div>
-      {/* Tick marks */}
       <div className="relative flex justify-between px-0">
         {ticks.map(t => (
           <div key={t} className="flex flex-col items-center gap-0.5">
@@ -165,7 +184,6 @@ const ApiKeyField = ({
         )}
       </div>
 
-      {/* Features list */}
       <div className="flex flex-wrap gap-1.5">
         {features.map(f => (
           <span key={f} className="px-2 py-0.5 rounded-full bg-secondary text-[10px] text-muted-foreground">{f}</span>
@@ -213,7 +231,6 @@ interface GithubRelease {
   prerelease: boolean;
 }
 
-// Parse GitHub markdown body into structured sections
 function parseChangelog(body: string) {
   if (!body?.trim()) return [{ type: "bullet" as const, text: "No changelog provided." }];
   const lines = body.split("\n");
@@ -249,7 +266,7 @@ function getSectionIcon(heading: string) {
 }
 
 const ChangelogCard = ({ release, isLatest }: { release: GithubRelease; isLatest: boolean }) => {
-  const [open, setOpen] = useState(isLatest); // auto-open latest
+  const [open, setOpen] = useState(isLatest);
   const date = new Date(release.published_at).toLocaleDateString("en-US", { year: "numeric", month: "short", day: "numeric" });
   const parsed = parseChangelog(release.body);
   const releaseName = release.name && release.name !== release.tag_name ? release.name : null;
@@ -314,6 +331,7 @@ export default function SettingsPage() {
   const { toast } = useToast();
   const { accent, setAccent } = useAccentColor();
   const [activeSection, setActiveSection] = useState("appearance");
+  const { settings: navSettings, update: updateNav, resetDefaults: resetNavDefaults } = useNavSettings();
 
   // Appearance
   const [theme, setTheme] = useState(() => localStorage.getItem("movie_tracker_theme") || "dark");
@@ -343,7 +361,10 @@ export default function SettingsPage() {
   const [checkingUpdate, setCheckingUpdate] = useState(false);
   const [updateStatus, setUpdateStatus] = useState<string | null>(null);
   const [loadingReleases, setLoadingReleases] = useState(false);
-  const [updateAvailable, setUpdateAvailable] = useState<{ tag: string; url: string; body: string } | null>(null);
+  const [updateAvailable, setUpdateAvailable] = useState<{ tag: string; url: string; body: string; tauriUpdate?: any } | null>(null);
+
+  // Drag state for nav reorder
+  const [dragIndex, setDragIndex] = useState<number | null>(null);
 
   // Data stats
   const [storageUsed, setStorageUsed] = useState("—");
@@ -353,7 +374,6 @@ export default function SettingsPage() {
     localStorage.setItem("movie_tracker_zoom", String(zoom));
   }, [zoom]);
 
-  // Compute storage size
   useEffect(() => {
     if (activeSection === "data") {
       let total = 0;
@@ -393,57 +413,31 @@ export default function SettingsPage() {
     }
   }, [activeSection, fetchGithubInfo, fetchReleases]);
 
-  // Keyboard shortcuts handler
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      // Global shortcuts
-      if (e.ctrlKey && e.key === 'k') {
-        e.preventDefault();
-        // Focus search (would need search implementation)
-        return;
-      }
-
-      // Navigation shortcuts
+      if (e.ctrlKey && e.key === 'k') { e.preventDefault(); return; }
       if (e.altKey || e.metaKey) {
         switch (e.key.toLowerCase()) {
-          case 'h':
-            e.preventDefault();
-            window.location.href = '/';
-            break;
-          case 'm':
-            e.preventDefault();
-            window.location.href = '/movies';
-            break;
-          case 's':
-            e.preventDefault();
-            window.location.href = '/series';
-            break;
+          case 'h': e.preventDefault(); window.location.href = '/'; break;
+          case 'm': e.preventDefault(); window.location.href = '/movies'; break;
+          case 's': e.preventDefault(); window.location.href = '/series'; break;
         }
       }
-
-      // Other shortcuts
       switch (e.key) {
         case 'Escape':
-          // Close dialogs or go back
           const closeButton = document.querySelector('[data-testid="close-button"]') as HTMLButtonElement;
           if (closeButton) closeButton.click();
           break;
         case 'f':
         case 'F11':
           e.preventDefault();
-          if (!document.fullscreenElement) {
-            document.documentElement.requestFullscreen();
-          } else {
-            document.exitFullscreen();
-          }
+          if (!document.fullscreenElement) document.documentElement.requestFullscreen();
+          else document.exitFullscreen();
           break;
       }
     };
-
     document.addEventListener('keydown', handleKeyDown);
-    return () => {
-      document.removeEventListener('keydown', handleKeyDown);
-    };
+    return () => document.removeEventListener('keydown', handleKeyDown);
   }, []);
 
   const checkForUpdate = async () => {
@@ -452,23 +446,27 @@ export default function SettingsPage() {
     setUpdateAvailable(null);
     
     try {
-      // Check if running in Tauri environment
-      if (window.__TAURI__) {
-        // Use Tauri updater
-        const { update, shouldUpdate } = await check();
-        if (shouldUpdate && update) {
+      let isTauri = false;
+      try {
+        // Check if Tauri APIs are available
+        await import("@tauri-apps/api/core");
+        isTauri = true;
+      } catch { isTauri = false; }
+
+      if (isTauri) {
+        const update = await check();
+        if (update?.available) {
           setUpdateStatus(`🆕 Update available: ${update.version}`);
           setUpdateAvailable({ 
             tag: `v${update.version}`, 
-            url: update.body?.signature || "", 
-            body: update.body?.notes || "",
+            url: "",
+            body: update.body || "",
             tauriUpdate: update
           });
         } else {
           setUpdateStatus(`✓ You're on the latest version (v${APP_VERSION})`);
         }
       } else {
-        // Web version - check GitHub releases
         const res = await fetch(`https://api.github.com/repos/${GITHUB_REPO}/releases/latest`);
         const data = await res.json();
         if (data.tag_name) {
@@ -492,30 +490,17 @@ export default function SettingsPage() {
 
   const installUpdate = async () => {
     if (!updateAvailable?.tauriUpdate) return;
-    
     try {
       setUpdateStatus("📦 Downloading update...");
-      // Import install dynamically
-      const { install } = await import("@tauri-apps/plugin-updater");
-      
+      await updateAvailable.tauriUpdate.download();
       setUpdateStatus("⚡ Installing update...");
-      await install(updateAvailable.tauriUpdate);
-      
+      await updateAvailable.tauriUpdate.install();
       setUpdateStatus("✅ Update installed! Restarting app...");
-      
-      // Small delay before restart to show success message
-      setTimeout(async () => {
-        await relaunch();
-      }, 1500);
-      
+      setTimeout(async () => { await relaunch(); }, 1500);
     } catch (error) {
       console.error('Update installation failed:', error);
       setUpdateStatus("❌ Failed to install update.");
-      toast({ 
-        title: "Update Failed", 
-        description: "Could not install the update. Please try again or download manually.", 
-        variant: "destructive" 
-      });
+      toast({ title: "Update Failed", description: "Could not install the update. Please try again or download manually.", variant: "destructive" });
     }
   };
 
@@ -526,7 +511,6 @@ export default function SettingsPage() {
     toast({ title: `${t === "light" ? "Light" : "Dark"} mode applied` });
   }
 
-  // API validators
   const validateTmdb = async (key: string) => {
     const res = await fetch(`https://api.themoviedb.org/3/configuration?api_key=${key}`);
     return res.ok;
@@ -537,7 +521,6 @@ export default function SettingsPage() {
     return data.Response !== "False" || data.Error !== "Invalid API key!";
   };
   const validateTvdb = async (key: string) => {
-    // TVDB v4 token endpoint
     const res = await fetch("https://api4.thetvdb.com/v4/login", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -596,6 +579,40 @@ export default function SettingsPage() {
       { label: "Search history (movies)", count: getCount("movie_tracker_search_history_movies"), key: "movie_tracker_search_history_movies" },
       { label: "Search history (series)", count: getCount("movie_tracker_search_history_series"), key: "movie_tracker_search_history_series" },
     ];
+  };
+
+  // Drag handlers for nav reorder
+  const handleDragStart = (index: number) => setDragIndex(index);
+  const handleDragOver = (e: React.DragEvent, index: number) => {
+    e.preventDefault();
+    if (dragIndex === null || dragIndex === index) return;
+    const newOrder = [...navSettings.order];
+    const [moved] = newOrder.splice(dragIndex, 1);
+    newOrder.splice(index, 0, moved);
+    updateNav({ order: newOrder });
+    setDragIndex(index);
+  };
+  const handleDragEnd = () => setDragIndex(null);
+
+  const moveItem = (index: number, dir: -1 | 1) => {
+    const newOrder = [...navSettings.order];
+    const newIndex = index + dir;
+    if (newIndex < 0 || newIndex >= newOrder.length) return;
+    [newOrder[index], newOrder[newIndex]] = [newOrder[newIndex], newOrder[index]];
+    updateNav({ order: newOrder });
+  };
+
+  const toggleItemVisibility = (path: string) => {
+    const visible = navSettings.visibleItems.includes(path);
+    if (visible) {
+      if (navSettings.visibleItems.length <= 3) {
+        toast({ title: "At least 3 items must be visible", variant: "destructive" });
+        return;
+      }
+      updateNav({ visibleItems: navSettings.visibleItems.filter(p => p !== path) });
+    } else {
+      updateNav({ visibleItems: [...navSettings.visibleItems, path] });
+    }
   };
 
   const renderSection = () => {
@@ -663,12 +680,122 @@ export default function SettingsPage() {
           </div>
         );
 
+      case "navigation":
+        return (
+          <div className="space-y-6">
+            <h2 className="text-xl font-bold text-foreground">Navigation</h2>
+
+            {/* Position */}
+            <div className="rounded-xl border border-border bg-card p-4 space-y-4">
+              <div className="font-semibold text-foreground">Position</div>
+              <div className="grid grid-cols-4 gap-2">
+                {(["bottom", "top", "left", "right"] as NavPosition[]).map(pos => (
+                  <button key={pos} onClick={() => updateNav({ position: pos })}
+                    className={`p-3 rounded-xl border-2 text-center transition-all capitalize text-sm ${navSettings.position === pos ? "border-primary bg-primary/10 text-primary font-semibold" : "border-border hover:border-primary/50 text-muted-foreground"}`}>
+                    {pos}
+                    {navSettings.position === pos && <CheckCircle size={12} className="inline ml-1.5" />}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Auto-hide */}
+            <div className="rounded-xl border border-border bg-card p-4">
+              <div className="flex items-center justify-between">
+                <div>
+                  <div className="font-medium text-foreground">Auto-hide on Scroll</div>
+                  <div className="text-xs text-muted-foreground">Navbar hides when you scroll down, reappears on scroll up</div>
+                </div>
+                <Toggle checked={navSettings.autoHide} onChange={v => updateNav({ autoHide: v })} />
+              </div>
+            </div>
+
+            {/* Glow color */}
+            <div className="rounded-xl border border-border bg-card p-4 space-y-4">
+              <div>
+                <div className="font-semibold text-foreground">Glow Color</div>
+                <div className="text-xs text-muted-foreground">Choose a custom glow color for the navigation bar</div>
+              </div>
+              <div className="grid grid-cols-4 gap-2">
+                {GLOW_PRESETS.map(g => (
+                  <button key={g.value} onClick={() => updateNav({ glowColor: g.value })}
+                    className={`p-2.5 rounded-xl border-2 flex items-center gap-2 transition-all text-sm ${navSettings.glowColor === g.value ? "border-primary bg-primary/10" : "border-border hover:border-primary/50"}`}>
+                    <div className="w-5 h-5 rounded-full flex-shrink-0 border border-border/50"
+                      style={{ background: g.value === "accent" ? "hsl(var(--primary))" : g.value }} />
+                    <span className="text-xs text-foreground">{g.label}</span>
+                  </button>
+                ))}
+              </div>
+              <div className="flex items-center gap-2">
+                <label className="text-xs text-muted-foreground">Custom hex:</label>
+                <input
+                  type="color"
+                  value={navSettings.glowColor.startsWith("#") ? navSettings.glowColor : "#3b82f6"}
+                  onChange={e => updateNav({ glowColor: e.target.value })}
+                  className="w-8 h-8 rounded cursor-pointer border-0 bg-transparent"
+                />
+                <input
+                  type="text"
+                  value={navSettings.glowColor}
+                  onChange={e => updateNav({ glowColor: e.target.value })}
+                  placeholder="#3b82f6"
+                  className="flex-1 bg-background border border-border rounded-lg px-3 py-1.5 text-xs text-foreground font-mono focus:outline-none focus:ring-2 focus:ring-primary/50"
+                />
+              </div>
+            </div>
+
+            {/* Reorder + Visibility */}
+            <div className="rounded-xl border border-border bg-card p-4 space-y-4">
+              <div>
+                <div className="font-semibold text-foreground">Reorder & Visibility</div>
+                <div className="text-xs text-muted-foreground">Drag to reorder, toggle to show/hide. Hidden items appear on hover (like Windows taskbar).</div>
+              </div>
+              <div className="space-y-1">
+                {navSettings.order.map((path, index) => {
+                  const isVisible = navSettings.visibleItems.includes(path);
+                  return (
+                    <div
+                      key={path}
+                      draggable
+                      onDragStart={() => handleDragStart(index)}
+                      onDragOver={(e) => handleDragOver(e, index)}
+                      onDragEnd={handleDragEnd}
+                      className={`flex items-center gap-2 p-2.5 rounded-lg border transition-all cursor-grab active:cursor-grabbing ${
+                        dragIndex === index ? "border-primary bg-primary/10 scale-[1.02]" : "border-border/50 hover:bg-secondary/50"
+                      } ${!isVisible ? "opacity-50" : ""}`}
+                    >
+                      <GripVertical size={14} className="text-muted-foreground flex-shrink-0" />
+                      <span className="flex-1 text-sm text-foreground">{NAV_LABEL_MAP[path] || path}</span>
+                      <div className="flex items-center gap-1">
+                        <button onClick={() => moveItem(index, -1)} disabled={index === 0}
+                          className="p-1 text-muted-foreground hover:text-foreground disabled:opacity-30 transition-colors">
+                          <ArrowUp size={12} />
+                        </button>
+                        <button onClick={() => moveItem(index, 1)} disabled={index === navSettings.order.length - 1}
+                          className="p-1 text-muted-foreground hover:text-foreground disabled:opacity-30 transition-colors">
+                          <ArrowDown size={12} />
+                        </button>
+                        <button onClick={() => toggleItemVisibility(path)}
+                          className={`p-1 transition-colors ${isVisible ? "text-primary" : "text-muted-foreground hover:text-foreground"}`}>
+                          {isVisible ? <Eye size={14} /> : <EyeOff size={14} />}
+                        </button>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+              <button onClick={resetNavDefaults} className="text-xs text-primary hover:underline flex items-center gap-1">
+                <RotateCcw className="w-3 h-3" /> Reset to defaults
+              </button>
+            </div>
+          </div>
+        );
+
       case "apis":
         return (
           <div className="space-y-6">
             <h2 className="text-xl font-bold text-foreground">API Keys</h2>
 
-            {/* Features bar */}
             <div className="rounded-xl bg-secondary/30 border border-border p-3 flex flex-wrap gap-2 text-xs">
               <span className="font-medium text-muted-foreground">Features available:</span>
               {[
@@ -682,32 +809,20 @@ export default function SettingsPage() {
               ))}
             </div>
 
-            <p className="text-sm text-muted-foreground">Click "Test & Save" to validate your key before it's stored. The app works with any combination of keys.</p>
+            <p className="text-sm text-muted-foreground">Click "Test & Save" to validate your key before it's stored.</p>
 
-            <ApiKeyField
-              label="TMDB" storageKey="tmdb_api_key"
-              value={tmdbKey} setValue={setTmdbKey}
-              show={showTmdb} setShow={setShowTmdb}
+            <ApiKeyField label="TMDB" storageKey="tmdb_api_key" value={tmdbKey} setValue={setTmdbKey} show={showTmdb} setShow={setShowTmdb}
               description="Required for all movie & series data, trailers, cast, recommendations"
               features={["Trending", "Search", "Trailers", "Cast", "Recommendations", "Genres"]}
-              onValidate={validateTmdb}
-            />
-            <ApiKeyField
-              label="OMDB" storageKey="omdb_api_key"
-              value={omdbKey} setValue={setOmdbKey}
-              show={showOmdb} setShow={setShowOmdb}
+              onValidate={validateTmdb} />
+            <ApiKeyField label="OMDB" storageKey="omdb_api_key" value={omdbKey} setValue={setOmdbKey} show={showOmdb} setShow={setShowOmdb}
               description="Enables IMDb & Rotten Tomatoes ratings, episode ratings, content rating"
               features={["IMDb Ratings", "RT Scores", "Episode Ratings", "Rated (PG/R/etc)"]}
-              onValidate={validateOmdb}
-            />
-            <ApiKeyField
-              label="TVDB" storageKey="tvdb_api_key"
-              value={tvdbKey} setValue={setTvdbKey}
-              show={showTvdb} setShow={setShowTvdb}
+              onValidate={validateOmdb} />
+            <ApiKeyField label="TVDB" storageKey="tvdb_api_key" value={tvdbKey} setValue={setTvdbKey} show={showTvdb} setShow={setShowTvdb}
               description="Enhanced series data, episode artwork, and additional cast info"
               features={["Episode Artwork", "Extended Cast", "Network Info"]}
-              onValidate={validateTvdb}
-            />
+              onValidate={validateTvdb} />
 
             <div className="rounded-xl border border-border/50 bg-card/50 p-4 text-xs text-muted-foreground space-y-1">
               <p className="font-medium text-foreground">How to get API keys:</p>
@@ -790,11 +905,8 @@ export default function SettingsPage() {
                   onChange: (v: boolean) => {
                     setHighContrast(v); localStorage.setItem("high_contrast", String(v));
                     document.documentElement.classList.toggle("high-contrast", v);
-                    if (v) {
-                      document.documentElement.style.setProperty("--border", "220 15% 35%");
-                    } else {
-                      applyStoredTheme();
-                    }
+                    if (v) document.documentElement.style.setProperty("--border", "220 15% 35%");
+                    else applyStoredTheme();
                   }
                 },
                 {
@@ -811,11 +923,8 @@ export default function SettingsPage() {
                   onChange: (v: boolean) => {
                     setReduceMotion(v); localStorage.setItem("reduce_motion", String(v));
                     document.documentElement.classList.toggle("reduce-motion", v);
-                    if (v) {
-                      document.documentElement.style.setProperty("--animation-duration", "0ms");
-                    } else {
-                      document.documentElement.style.removeProperty("--animation-duration");
-                    }
+                    if (v) document.documentElement.style.setProperty("--animation-duration", "0ms");
+                    else document.documentElement.style.removeProperty("--animation-duration");
                   }
                 },
               ].map(item => (
@@ -836,8 +945,6 @@ export default function SettingsPage() {
         return (
           <div className="space-y-6">
             <h2 className="text-xl font-bold text-foreground">Data Management</h2>
-
-            {/* Storage summary */}
             <div className="rounded-xl border border-border bg-card p-4 space-y-3">
               <div className="flex items-center justify-between">
                 <div className="font-semibold text-foreground">Storage Used</div>
@@ -892,11 +999,10 @@ export default function SettingsPage() {
           <div className="space-y-6">
             <h2 className="text-xl font-bold text-foreground">About</h2>
 
-            {/* App card */}
             <div className="rounded-xl border border-border bg-card p-6 space-y-4">
               <div className="flex items-center gap-4">
                 <div className="w-14 h-14 rounded-2xl bg-primary/10 flex items-center justify-center overflow-hidden">
-                  <img src="/app-icon.png" alt="Movie Tracker" className="w-full h-full object-cover" />
+                  <img src={appIcon} alt="Movie Tracker" className="w-full h-full object-cover" />
                 </div>
                 <div>
                   <h3 className="text-lg font-bold text-foreground">Movie Tracker</h3>
@@ -917,7 +1023,6 @@ export default function SettingsPage() {
               </div>
             </div>
 
-            {/* GitHub */}
             <div className="rounded-xl border border-border bg-card p-4 space-y-3">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
@@ -941,7 +1046,6 @@ export default function SettingsPage() {
               </div>
             </div>
 
-            {/* Check for updates */}
             <div className="rounded-xl border border-border bg-card p-4 space-y-3">
               <div className="flex items-center justify-between">
                 <div>
@@ -964,7 +1068,6 @@ export default function SettingsPage() {
               )}
             </div>
 
-            {/* Changelog */}
             <div className="space-y-3">
               <div className="flex items-center justify-between">
                 <div className="font-semibold text-foreground">Changelog</div>
@@ -1035,7 +1138,6 @@ export default function SettingsPage() {
           </main>
         </div>
 
-        {/* Footer */}
         <div className="mt-12 pt-6 border-t border-border text-center">
           <p className="text-xs text-muted-foreground flex items-center justify-center gap-1">
             Made with <Heart size={11} className="text-red-400 fill-red-400" /> by{" "}
