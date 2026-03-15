@@ -1,19 +1,23 @@
 {
-  "version": "1.3.1",
-  "notes": "v1.3.1 — Minor Fixes & Enhancements\n\n### Bug Fixes\n- Fixed toggle/switch component — dot no longer escapes track\n- Fixed light mode not applying globally across all pages\n- Fixed navigation customization not reflecting on navbar\n- Fixed display settings (image quality, adult content) now functional\n- Fixed keyboard shortcuts (G then H/M/S etc.)\n- Fixed external links not opening in Tauri desktop app\n\n### Enhancements\n- Customizable keyboard shortcuts with conflict detection\n- Developer profile page with social links\n- Enhanced About page with tech badges\n- Image quality controls TMDB poster resolution\n- Adult content filter passes to TMDB API",
+  "version": "1.3.2",
+  "notes": "📱 Mobile Support - Android APK & Cross-Platform Builds\n\n✨ **Major New Features:**\n- **📱 Android APK Support** - First mobile version for Movie Tracker\n- **🔧 Mobile Tauri Features** - Touch-optimized interface\n- **📦 Cross-Platform CI/CD** - Automated Android builds\n- **🌐 Enhanced Distribution** - APK for direct Android downloads\n\n🐛 **Bug Fixes:**\n- Fixed toggle/switch component — dot no longer escapes track\n- Fixed light mode not applying globally across all pages\n- Fixed navigation customization not reflecting on navbar\n- Fixed display settings (image quality, adult content) now functional\n- Fixed keyboard shortcuts (G then H/M/S etc.)\n- Fixed external links not opening in Tauri desktop app\n\n🔧 **Technical Improvements:**\n- **Mobile Configuration** - Tauri mobile features enabled\n- **Android Build Target** - Automated APK generation\n- **Cross-Platform Support** - Windows, macOS, Linux, Android\n- **CI/CD Pipeline** - GitHub Actions ready for all platforms\n\n📱 **Android Features:**\n- **Touch Interface** - Mobile-optimized user experience\n- **APK Distribution** - Direct download and installation\n- **Google Play Ready** - Prepared for app store submission\n- **Progressive Web App** - PWA capabilities included\n\n🚀 **Version 1.3.2 - Mobile Milestone!**\n\nThis release marks Movie Tracker's expansion to mobile platforms with full cross-platform support.",
   "pub_date": "2026-03-08T12:00:00Z",
   "platforms": {
     "windows": {
       "signature": "",
-      "url": "https://github.com/yetemgetaB/Movie-Tracker-Frontend/releases/download/v1.3.1/Movie.Tracker.1.3.1.x64.msi"
+      "url": "https://github.com/yetemgetaB/Movie-Tracker-Frontend/releases/download/v1.3.2/Movie.Tracker.1.3.2.x64.msi"
     },
     "darwin": {
       "signature": "",
-      "url": "https://github.com/yetemgetaB/Movie-Tracker-Frontend/releases/download/v1.3.1/Movie.Tracker.1.3.1.dmg"
+      "url": "https://github.com/yetemgetaB/Movie-Tracker-Frontend/releases/download/v1.3.2/Movie.Tracker.1.3.2.dmg"
     },
     "linux": {
       "signature": "",
-      "url": "https://github.com/yetemgetaB/Movie-Tracker-Frontend/releases/download/v1.3.1/Movie.Tracker.1.3.1.AppImage"
+      "url": "https://github.com/yetemgetaB/Movie-Tracker-Frontend/releases/download/v1.3.2/Movie.Tracker.1.3.2.AppImage"
+    },
+    "android": {
+      "signature": "",
+      "url": "https://github.com/yetemgetaB/Movie-Tracker-Frontend/releases/download/v1.3.2/Movie.Tracker.1.3.2.apk"
     }
   }
 }

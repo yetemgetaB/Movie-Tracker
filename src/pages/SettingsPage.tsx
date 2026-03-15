@@ -17,7 +17,7 @@ import { useNavigate } from "react-router-dom";
 import { openExternal } from "@/lib/openExternal";
 import appIcon from "@/assets/app-icon.png";
 
-const APP_VERSION = "1.3.1";
+const APP_VERSION = "1.3.2";
 const GITHUB_REPO = "yetemgetaB/Movie-Tracker";
 const GITHUB_URL = `https://github.com/${GITHUB_REPO}`;
 

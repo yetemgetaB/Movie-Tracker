@@ -30,25 +30,28 @@
     }
   },
   "bundle": {
-    "active": true,
+    "active": false,
     "targets": "all",
     "icon": [
       "icons/32x32.png",
       "icons/128x128.png",
-      "icons/icon.ico",
-      "icons/icon.icns",
-      "icons/icon.png"
+      "icons/icon.ico"
     ],
     "windows": {
       "certificateThumbprint": null,
       "digestAlgorithm": "sha256",
-      "timestampUrl": ""
+      "timestampUrl": "",
+      "tsp": false,
+      "wix": {
+        "language": ["en-US"],
+        "template": "modern"
+      }
     },
     "publisher": "Yetemgeta Bekele",
     "category": "Entertainment",
     "shortDescription": "Track movies and series with style",
     "longDescription": "A beautiful Netflix-style movie and series tracker. Discover, track, and organize your watching journey with this elegant desktop application.",
-    "copyright": "© 2026 Yetemgeta Bekele"
+    "copyright": " 2026 Yetemgeta Bekele"
   },
   "plugins": {
     "updater": {
