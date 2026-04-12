@@ -263,7 +263,7 @@ const VaultPage = () => {
 
   const confirmRemove = () => {
     if (!deleteConfirm) return;
-    removeFromCollection(deleteConfirm.id);
+    removeFromCollection(deleteConfirm.id, deleteConfirm.type as "movie" | "series");
     loadCollection();
     toast({ title: `${deleteConfirm.title} removed from Vault` });
     setDeleteConfirm(null);
