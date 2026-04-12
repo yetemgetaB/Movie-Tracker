@@ -132,10 +132,11 @@ export function getAchievementStats(): AchievementStats {
     (i) => i.userRating && i.userRating !== "—" && !isNaN(parseFloat(i.userRating))
   );
 
-  // Completed series
-  const completedSeries = series.filter(
-    (s) => s.status === "Ended" || s.finishDate
-  );
+  // Completed series — normalize status check
+  const completedSeries = series.filter((s) => {
+    const st = (s.status || "").trim().toLowerCase();
+    return st === "yes" || st === "completed" || st === "ended" || st === "finished" || !!s.finishDate;
+  });
 
   // Max items in one day
   const dayMap: Record<string, number> = {};
