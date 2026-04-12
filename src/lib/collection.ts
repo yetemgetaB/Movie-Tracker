@@ -92,8 +92,10 @@ export function addToCollection(item: CollectionItem): void {
   saveLocalCollection(items);
 }
 
-export function removeFromCollection(id: number): void {
-  const items = getLocalCollection().filter(i => i.id !== id);
+export function removeFromCollection(id: number, type?: "movie" | "series"): void {
+  const items = getLocalCollection().filter(i =>
+    type ? !(i.id === id && i.type === type) : i.id !== id
+  );
   saveLocalCollection(items);
 }
 

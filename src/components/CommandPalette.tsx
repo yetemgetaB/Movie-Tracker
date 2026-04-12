@@ -1,9 +1,9 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { CommandDialog, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList, CommandSeparator } from "@/components/ui/command";
-import { Film, Tv, Search, Home, BarChart3, Database, Compass, Calendar, Settings, BookmarkCheck, Star } from "lucide-react";
+import { Film, Tv, Home, BarChart3, Database, Compass, Calendar, Settings, BookmarkCheck, Star } from "lucide-react";
 import { getCollection } from "@/lib/collection";
-import { tmdbApi, tmdbSeriesApi, img, hasTmdbKey } from "@/lib/tmdb";
+import { tmdbApi, tmdbSeriesApi, hasTmdbKey } from "@/lib/tmdb";
 import { useQuery } from "@tanstack/react-query";
 
 const PAGES = [
@@ -34,7 +34,7 @@ const CommandPalette = () => {
     return () => document.removeEventListener("keydown", handler);
   }, []);
 
-  const collection = getCollection();
+  const collection = useMemo(() => open ? getCollection() : [], [open]);
 
   const filteredCollection = search.length >= 2
     ? collection.filter(c => c.title.toLowerCase().includes(search.toLowerCase())).slice(0, 6)

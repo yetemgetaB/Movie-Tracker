@@ -9,21 +9,17 @@ import { useQuery } from "@tanstack/react-query";
 import { tmdbSeriesApi, img, hasTmdbKey, type TmdbSeries } from "@/lib/tmdb";
 import SeriesDetailView from "@/components/SeriesDetailView";
 
-const GENRES = [
-  { id: 10759, name: "Action & Adventure" }, { id: 16, name: "Animation" },
-  { id: 35, name: "Comedy" }, { id: 80, name: "Crime" }, { id: 18, name: "Drama" },
-  { id: 10765, name: "Sci-Fi & Fantasy" }, { id: 9648, name: "Mystery" },
-  { id: 10751, name: "Family" }, { id: 10762, name: "Kids" }, { id: 10763, name: "News" },
-];
+import { TV_GENRES } from "@/lib/genres";
+import { getSearchHistory as getHistory, addToSearchHistory as addHistory } from "@/lib/searchHistory";
 
+const GENRES = TV_GENRES;
 const HISTORY_KEY = "movie_tracker_search_history_series";
 
 function getSearchHistory(): string[] {
-  try { return JSON.parse(localStorage.getItem(HISTORY_KEY) || "[]"); } catch { return []; }
+  return getHistory(HISTORY_KEY);
 }
 function addToHistory(term: string) {
-  const h = getSearchHistory().filter(x => x !== term).slice(0, 9);
-  localStorage.setItem(HISTORY_KEY, JSON.stringify([term, ...h]));
+  addHistory(HISTORY_KEY, term);
 }
 
 const SeriesPage = () => {

@@ -61,7 +61,10 @@ const AnalyticsPage = () => {
     const rated = collection.filter(i => i.userRating && i.userRating !== "—" && !isNaN(parseFloat(i.userRating)));
     const avgRating = rated.length ? rated.reduce((s, i) => s + parseFloat(i.userRating), 0) / rated.length : 0;
     const totalRuntime = movies.reduce((s, m) => s + (m.runtime || 90), 0);
-    const completedSeries = series.filter(s => s.status === "Ended" || s.finishDate);
+    const completedSeries = series.filter(s => {
+      const st = (s.status || "").trim().toLowerCase();
+      return st === "yes" || st === "completed" || st === "ended" || st === "finished" || !!s.finishDate;
+    });
     const completionRate = series.length ? Math.round((completedSeries.length / series.length) * 100) : 0;
     return {
       totalMovies: movies.length, totalSeries: series.length,

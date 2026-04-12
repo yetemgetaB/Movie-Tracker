@@ -1,10 +1,11 @@
 import { Component, ErrorInfo, ReactNode } from "react";
-import { AlertCircle, RefreshCw } from "lucide-react";
+import { AlertCircle, RefreshCw, Home } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 interface Props {
   children: ReactNode;
   fallbackMessage?: string;
+  resetKey?: string; // changes to this key auto-reset the boundary
 }
 
 interface State {
@@ -26,8 +27,20 @@ class ErrorBoundary extends Component<Props, State> {
     console.error("ErrorBoundary caught:", error, info);
   }
 
+  componentDidUpdate(prevProps: Props) {
+    // Auto-reset when resetKey changes (e.g. route change)
+    if (this.state.hasError && prevProps.resetKey !== this.props.resetKey) {
+      this.setState({ hasError: false, error: null });
+    }
+  }
+
   handleReset = () => {
     this.setState({ hasError: false, error: null });
+  };
+
+  handleGoHome = () => {
+    this.setState({ hasError: false, error: null });
+    window.location.href = "/";
   };
 
   render() {
@@ -49,9 +62,14 @@ class ErrorBoundary extends Component<Props, State> {
               </pre>
             </details>
           )}
-          <Button onClick={this.handleReset} className="gap-2">
-            <RefreshCw size={14} /> Try Again
-          </Button>
+          <div className="flex gap-2">
+            <Button onClick={this.handleReset} className="gap-2">
+              <RefreshCw size={14} /> Try Again
+            </Button>
+            <Button variant="outline" onClick={this.handleGoHome} className="gap-2">
+              <Home size={14} /> Go Home
+            </Button>
+          </div>
         </div>
       );
     }

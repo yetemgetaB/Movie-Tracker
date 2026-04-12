@@ -12,41 +12,7 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { getCollection, removeFromCollection, updateCollectionItem, type CollectionItem, type CollectionMovie, type CollectionSeries } from "@/lib/collection";
 import { toast } from "@/hooks/use-toast";
 import { useNavigate } from "react-router-dom";
-import { format, parse, isValid } from "date-fns";
-
-// ── Date formatting ──────────────────────────────────────────────
-function formatDisplayDate(raw: string | undefined | null): string {
-  if (!raw || raw === "—" || raw.trim() === "") return "—";
-  const s = raw.trim();
-  // Try ISO / YYYY-MM-DD
-  const iso = new Date(s);
-  if (isValid(iso) && /^\d{4}-\d{2}-\d{2}/.test(s)) return format(iso, "MMM d, yyyy");
-  // Try "Mon DD, YYYY"
-  const fmts = ["MMM d, yyyy", "MMM dd, yyyy", "MM/dd/yyyy", "M/d/yyyy"];
-  for (const f of fmts) {
-    try {
-      const d = parse(s, f, new Date());
-      if (isValid(d)) return format(d, "MMM d, yyyy");
-    } catch {}
-  }
-  return s; // fallback: return as-is
-}
-
-// ── Status badge helper ──────────────────────────────────────────
-function getStatusInfo(status: string): { label: string; className: string } {
-  const s = (status || "").trim().toLowerCase();
-  if (s === "yes" || s === "completed" || s === "ended" || s === "finished")
-    return { label: "Completed", className: "bg-emerald-500/15 text-emerald-400 border-emerald-500/30" };
-  if (/no\(\d{4}\)/.test(s)) {
-    const year = s.match(/\d{4}/)?.[0] || "";
-    return { label: `Upcoming ${year}`, className: "bg-blue-500/15 text-blue-400 border-blue-500/30" };
-  }
-  if (s === "no" || s === "in progress" || s === "returning series" || s === "ongoing")
-    return { label: "In Progress", className: "bg-amber-500/15 text-amber-400 border-amber-500/30" };
-  if (s === "canceled" || s === "cancelled")
-    return { label: "Canceled", className: "bg-red-500/15 text-red-400 border-red-500/30" };
-  return { label: status || "—", className: "bg-secondary text-muted-foreground" };
-}
+import { formatDisplayDate, getStatusInfo } from "@/lib/dateUtils";
 
 // ── Rating display ───────────────────────────────────────────────
 function formatRating(val: string | undefined | null): { text: string; hasValue: boolean } {
@@ -297,7 +263,7 @@ const VaultPage = () => {
 
   const confirmRemove = () => {
     if (!deleteConfirm) return;
-    removeFromCollection(deleteConfirm.id);
+    removeFromCollection(deleteConfirm.id, deleteConfirm.type as "movie" | "series");
     loadCollection();
     toast({ title: `${deleteConfirm.title} removed from Vault` });
     setDeleteConfirm(null);

@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from "react";
-import { Play, Info, ChevronLeft, ChevronRight, Volume2, VolumeX, AlertCircle, Plus, Star, WifiOff, Sparkles, Heart, Zap, Brain, Laugh, Ghost } from "lucide-react";
+import { Play, Info, ChevronLeft, ChevronRight, Volume2, VolumeX, AlertCircle, Plus, Star, WifiOff, Heart, Zap, Brain, Laugh, Ghost } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -13,14 +13,7 @@ import { toast } from "@/hooks/use-toast";
 import { useOnlineStatus } from "@/hooks/use-online-status";
 import MovieDetailView from "@/components/MovieDetailView";
 import SeriesDetailView from "@/components/SeriesDetailView";
-
-
-const GENRE_MAP: Record<number, string> = {
-  28: "Action", 12: "Adventure", 16: "Animation", 35: "Comedy", 80: "Crime",
-  99: "Documentary", 18: "Drama", 10751: "Family", 14: "Fantasy", 36: "History",
-  27: "Horror", 10402: "Music", 9648: "Mystery", 10749: "Romance", 878: "Sci-Fi",
-  10770: "TV Movie", 53: "Thriller", 10752: "War", 37: "Western",
-};
+import { GENRE_MAP } from "@/lib/genres";
 
 // ─── Mini Carousel Row ────────────────────────────────────────────────────────
 const ContentRow = ({

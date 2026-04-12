@@ -3,7 +3,7 @@ import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { BrowserRouter, Routes, Route, useLocation } from "react-router-dom";
 import AppLayout from "./components/AppLayout";
 import ErrorBoundary from "./components/ErrorBoundary";
 import LoadingScreen from "./components/LoadingScreen";
@@ -20,9 +20,16 @@ import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
 
-const LayoutWrapper = ({ children }: { children: React.ReactNode }) => (
-  <AppLayout>{children}</AppLayout>
-);
+const LayoutWrapper = ({ children }: { children: React.ReactNode }) => {
+  const location = useLocation();
+  return (
+    <AppLayout>
+      <ErrorBoundary resetKey={location.pathname}>
+        {children}
+      </ErrorBoundary>
+    </AppLayout>
+  );
+};
 
 const App = () => {
   const [loading, setLoading] = useState(true);
