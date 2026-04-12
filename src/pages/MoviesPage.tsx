@@ -13,22 +13,18 @@ import { useQuery } from "@tanstack/react-query";
 import { tmdbApi, img, hasTmdbKey, type TmdbMovie } from "@/lib/tmdb";
 import MovieDetailView from "@/components/MovieDetailView";
 import { getCollection } from "@/lib/collection";
-const GENRES = [
-  { id: 28, name: "Action" }, { id: 12, name: "Adventure" }, { id: 16, name: "Animation" },
-  { id: 35, name: "Comedy" }, { id: 80, name: "Crime" }, { id: 18, name: "Drama" },
-  { id: 14, name: "Fantasy" }, { id: 27, name: "Horror" }, { id: 9648, name: "Mystery" },
-  { id: 10749, name: "Romance" }, { id: 878, name: "Sci-Fi" }, { id: 53, name: "Thriller" },
-];
+import { MOVIE_GENRES } from "@/lib/genres";
+import { getSearchHistory as getHistory, addToSearchHistory as addHistory } from "@/lib/searchHistory";
 
+const GENRES = MOVIE_GENRES;
 const SEARCH_HISTORY_KEY = "movie_tracker_search_history_movies";
 
 function getSearchHistory(): string[] {
-  try { return JSON.parse(localStorage.getItem(SEARCH_HISTORY_KEY) || "[]"); } catch { return []; }
+  return getHistory(SEARCH_HISTORY_KEY);
 }
 
 function addToSearchHistory(term: string) {
-  const history = getSearchHistory().filter(h => h !== term).slice(0, 9);
-  localStorage.setItem(SEARCH_HISTORY_KEY, JSON.stringify([term, ...history]));
+  addHistory(SEARCH_HISTORY_KEY, term);
 }
 
 const MoviesPage = () => {

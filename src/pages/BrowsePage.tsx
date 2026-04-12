@@ -1,25 +1,10 @@
-import { useState, useMemo } from "react";
+import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Compass, Film, Tv, ChevronRight } from "lucide-react";
-import { useQuery } from "@tanstack/react-query";
-import { tmdbApi, tmdbSeriesApi, img, hasTmdbKey } from "@/lib/tmdb";
-import { Badge } from "@/components/ui/badge";
+import { hasTmdbKey } from "@/lib/tmdb";
 import MovieDetailView from "@/components/MovieDetailView";
 import SeriesDetailView from "@/components/SeriesDetailView";
-
-const MOVIE_GENRES = [
-  { id: 28, name: "Action", emoji: "💥" }, { id: 35, name: "Comedy", emoji: "😂" },
-  { id: 18, name: "Drama", emoji: "🎭" }, { id: 27, name: "Horror", emoji: "👻" },
-  { id: 878, name: "Sci-Fi", emoji: "🚀" }, { id: 10749, name: "Romance", emoji: "💕" },
-  { id: 53, name: "Thriller", emoji: "🔪" }, { id: 14, name: "Fantasy", emoji: "🧙" },
-  { id: 12, name: "Adventure", emoji: "🗺️" }, { id: 80, name: "Crime", emoji: "🔍" },
-];
-
-const TV_GENRES = [
-  { id: 10759, name: "Action & Adventure", emoji: "⚔️" }, { id: 35, name: "Comedy", emoji: "😄" },
-  { id: 18, name: "Drama", emoji: "🎬" }, { id: 10765, name: "Sci-Fi & Fantasy", emoji: "🌌" },
-  { id: 9648, name: "Mystery", emoji: "🕵️" }, { id: 80, name: "Crime", emoji: "🔎" },
-];
+import { MOVIE_GENRES, TV_GENRES } from "@/lib/genres";
 
 const BrowsePage = () => {
   const navigate = useNavigate();
