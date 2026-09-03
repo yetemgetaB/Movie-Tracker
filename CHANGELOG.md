@@ -7,27 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
-## [Unreleased]
-
-### Added
-- Project roadmap documentation
-- Comprehensive improvement planning
-- Version tracking system
+## [1.3.3] - 2026-09-03
 
 ### Changed
-- N/A
-
-### Deprecated
-- N/A
+- Consolidated root workspace and restored native `src-tauri` structure.
+- Cleaned up root build artifacts and stale timestamp configs.
+- Re-synchronized dependencies with clean `package-lock.json`.
+- Standardized project name to `movie-tracker` and bumped package/tauri/cargo versions to `1.3.3`.
+- Relocated `ROADMAP.md` to repository root.
 
 ### Removed
-- N/A
-
-### Fixed
-- N/A
-
-### Security
-- N/A
+- Legacy build timestamps and obsolete lockfiles.
 
 ---
 
