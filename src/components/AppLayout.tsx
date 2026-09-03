@@ -6,6 +6,8 @@ import Titlebar from "./Titlebar";
 import CommandPalette from "./CommandPalette";
 import RouletteModal from "./RouletteModal";
 import ShortcutsModal from "./ShortcutsModal";
+import QuickRateModal from "./QuickRateModal";
+import { usePotplayerScrobbler } from "@/hooks/use-potplayer-scrobbler";
 import { initAccentColor } from "@/hooks/use-accent-color";
 import { initPlugins } from "@/lib/plugins";
 import { checkAchievements } from "@/lib/achievements";
@@ -21,6 +23,7 @@ const AppLayout = ({ children }: AppLayoutProps) => {
   const [navVisible, setNavVisible] = useState(true);
   const [rouletteOpen, setRouletteOpen] = useState(false);
   const [shortcutsOpen, setShortcutsOpen] = useState(false);
+  const { completedMedia, modalOpen, setModalOpen } = usePotplayerScrobbler();
 
   useEffect(() => {
     initAccentColor();
@@ -89,6 +92,12 @@ const AppLayout = ({ children }: AppLayoutProps) => {
       <CommandPalette />
       <RouletteModal open={rouletteOpen} onOpenChange={setRouletteOpen} />
       <ShortcutsModal open={shortcutsOpen} onOpenChange={setShortcutsOpen} />
+      <QuickRateModal
+        open={modalOpen}
+        onOpenChange={setModalOpen}
+        mediaItem={completedMedia?.item || null}
+        nextEpisodeItem={completedMedia?.nextItem || null}
+      />
       <main id="main-content" className="pt-9 pb-28" role="main">{children}</main>
       <BottomNav onVisibilityChange={setNavVisible} />
     </div>

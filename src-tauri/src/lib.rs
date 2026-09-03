@@ -156,6 +156,106 @@ fn pick_folder() -> Result<Option<String>, String> {
     }
 }
 
+#[derive(serde::Serialize, serde::Deserialize, Clone, Debug)]
+pub struct PotPlayerStatus {
+    pub is_running: bool,
+    pub window_title: String,
+    pub current_filename: Option<String>,
+    pub recent_files: Vec<String>,
+}
+
+#[tauri::command]
+fn get_potplayer_status() -> Result<PotPlayerStatus, String> {
+    #[cfg(target_os = "windows")]
+    {
+        let script = r#"
+        $proc = Get-Process -Name "PotPlayer*" -ErrorAction SilentlyContinue | Where-Object { $_.MainWindowTitle } | Select-Object -First 1
+        if ($proc) {
+            Write-Output "RUNNING|$($proc.MainWindowTitle)"
+        } else {
+            Write-Output "STOPPED|"
+        }
+        "#;
+        let output = std::process::Command::new("powershell")
+            .args(["-NoProfile", "-NonInteractive", "-Command", script])
+            .output()
+            .map_err(|e| e.to_string())?;
+
+        let text = String::from_utf8_lossy(&output.stdout).trim().to_string();
+        let parts: Vec<&str> = text.splitn(2, '|').collect();
+        let is_running = parts.first().copied().unwrap_or("") == "RUNNING";
+        let window_title = parts.get(1).copied().unwrap_or("").trim().to_string();
+
+        let mut current_filename = None;
+        if is_running && !window_title.is_empty() {
+            let mut clean = window_title.clone();
+            if let Some(pos) = clean.rfind(" - PotPlayer") {
+                clean.truncate(pos);
+            }
+            if clean.starts_with("[Playing] ") {
+                clean = clean.trim_start_matches("[Playing] ").to_string();
+            } else if clean.starts_with("[Paused] ") {
+                clean = clean.trim_start_matches("[Paused] ").to_string();
+            }
+            clean = clean.trim().to_string();
+            if !clean.is_empty() && clean != "Daum PotPlayer" && clean != "PotPlayer" {
+                current_filename = Some(clean);
+            }
+        }
+
+        let mut recent_files = Vec::new();
+        if let Ok(appdata) = std::env::var("APPDATA") {
+            let candidates = [
+                format!("{}\\PotPlayerMini64\\PotPlayerMini64.ini", appdata),
+                format!("{}\\PotPlayer64\\PotPlayer64.ini", appdata),
+                format!("{}\\PotPlayerMini\\PotPlayerMini.ini", appdata),
+            ];
+            for path_str in candidates {
+                let p = std::path::Path::new(&path_str);
+                if p.exists() {
+                    if let Ok(content) = std::fs::read_to_string(p) {
+                        let mut in_recent = false;
+                        for line in content.lines() {
+                            let line = line.trim();
+                            if line.starts_with('[') && line.ends_with(']') {
+                                in_recent = line.eq_ignore_ascii_case("[RecentFileList]");
+                                continue;
+                            }
+                            if in_recent && line.contains('=') {
+                                if let Some((_, file)) = line.split_once('=') {
+                                    let f = file.trim();
+                                    if !f.is_empty() && !recent_files.contains(&f.to_string()) {
+                                        recent_files.push(f.to_string());
+                                    }
+                                }
+                            }
+                        }
+                    }
+                    if !recent_files.is_empty() {
+                        break;
+                    }
+                }
+            }
+        }
+
+        Ok(PotPlayerStatus {
+            is_running,
+            window_title,
+            current_filename,
+            recent_files,
+        })
+    }
+    #[cfg(not(target_os = "windows"))]
+    {
+        Ok(PotPlayerStatus {
+            is_running: false,
+            window_title: String::new(),
+            current_filename: None,
+            recent_files: Vec::new(),
+        })
+    }
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
@@ -164,7 +264,8 @@ pub fn run() {
             scan_media_directory,
             detect_potplayer,
             launch_media_file,
-            pick_folder
+            pick_folder,
+            get_potplayer_status
         ])
         .setup(|_app| {
             Ok(())

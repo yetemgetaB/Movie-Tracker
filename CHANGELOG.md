@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [1.3.8] - 2026-09-03
+
+### Added
+- **PotPlayer Auto-Scrobbler**: Background real-time telemetry polling PotPlayer window titles and `%APPDATA%` recent files to automatically track active playback sessions.
+- **Interactive Quick-Rate Notification**: Floating playback completion dialog with a 1–10 star rating bar and a one-click **"Play Next Episode"** action.
+- **Automatic Finish Timestamp Logging**: Automatically records `finishDate` and marks media as completed upon playback completion.
+
+---
+
 ## [1.3.7] - 2026-09-03
 
 ### Added

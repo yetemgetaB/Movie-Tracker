@@ -203,6 +203,23 @@ export async function launchMediaNative(filePath: string, customPlayerPath?: str
   });
 }
 
+export interface PotPlayerStatus {
+  is_running: boolean;
+  window_title: string;
+  current_filename?: string | null;
+  recent_files: string[];
+}
+
+export async function getPotplayerStatusNative(): Promise<PotPlayerStatus | null> {
+  if (!isTauri()) return null;
+  try {
+    return await invoke<PotPlayerStatus>("get_potplayer_status");
+  } catch (err) {
+    console.error("Failed to get PotPlayer status:", err);
+    return null;
+  }
+}
+
 export async function detectPotplayerNative(): Promise<string | null> {
   if (!isTauri()) return null;
   try {
