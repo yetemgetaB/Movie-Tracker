@@ -4,7 +4,8 @@ import {
   Eye, EyeOff, CheckCircle, XCircle, Trash2, Download, Upload, RotateCcw,
   Star, RefreshCw, Loader2, ChevronDown,
   Info, ExternalLink, Heart, Image as ImageIcon, Zap, Tag, GitBranch, DownloadCloud,
-  Navigation, GripVertical, ArrowUp, ArrowDown, User, Coffee, Mail, Globe
+  Navigation, GripVertical, ArrowUp, ArrowDown, User, Coffee, Mail, Globe,
+  Play, HardDrive
 } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
@@ -16,8 +17,9 @@ import { useNavSettings, type NavPosition } from "@/hooks/use-nav-settings";
 import { useNavigate } from "react-router-dom";
 import { openExternal } from "@/lib/openExternal";
 import appIcon from "@/assets/app-icon.png";
+import { detectPotplayerNative } from "@/lib/mediaScanner";
 
-const APP_VERSION = "1.3.2";
+const APP_VERSION = "1.3.7";
 const GITHUB_REPO = "yetemgetaB/Movie-Tracker";
 const GITHUB_URL = `https://github.com/${GITHUB_REPO}`;
 
@@ -50,6 +52,7 @@ const GLOW_PRESETS = [
 
 const SECTIONS = [
   { id: "appearance", label: "Appearance", icon: Palette },
+  { id: "media", label: "Media Player", icon: Play },
   { id: "navigation", label: "Navigation", icon: Navigation },
   { id: "apis", label: "API Keys", icon: Key },
   { id: "display", label: "Display", icon: Monitor },
@@ -410,6 +413,16 @@ export default function SettingsPage() {
   // Appearance
   const [theme, setTheme] = useState(() => localStorage.getItem("movie_tracker_theme") || "dark");
   const [zoom, setZoom] = useState(() => parseInt(localStorage.getItem("movie_tracker_zoom") || "100"));
+
+  // Media Player Settings
+  const [potplayerDetected, setPotplayerDetected] = useState<string | null>(null);
+  const [preferredPlayerPath, setPreferredPlayerPath] = useState(() => localStorage.getItem("movie_tracker_preferred_player_path") || "");
+
+  useEffect(() => {
+    detectPotplayerNative().then((path) => {
+      setPotplayerDetected(path);
+    });
+  }, []);
 
   // APIs
   const [tmdbKey, setTmdbKey] = useState(() => localStorage.getItem("movie_tracker_tmdb_api_key") || localStorage.getItem("tmdb_api_key") || "");
@@ -854,6 +867,71 @@ export default function SettingsPage() {
                 <option value="/watchlist">Watchlist</option>
                 <option value="/analytics">Analytics</option>
               </select>
+            </div>
+          </div>
+        );
+
+      case "media":
+        return (
+          <div className="space-y-6">
+            <h2 className="text-xl font-bold text-foreground">Media Player</h2>
+
+            {/* PotPlayer status card */}
+            <div className="rounded-xl border border-border bg-card p-4 space-y-3">
+              <div className="flex items-center justify-between">
+                <div>
+                  <div className="font-semibold text-foreground flex items-center gap-2">
+                    <Play size={16} className="text-primary" />
+                    PotPlayer Integration
+                  </div>
+                  <div className="text-xs text-muted-foreground mt-0.5">
+                    Launch media files directly into PotPlayer with automatic playback logging
+                  </div>
+                </div>
+                {potplayerDetected ? (
+                  <Badge className="bg-emerald-500/15 text-emerald-500 border-emerald-500/30 text-xs gap-1">
+                    <CheckCircle className="w-3 h-3" /> Detected
+                  </Badge>
+                ) : (
+                  <Badge variant="outline" className="text-muted-foreground text-xs">
+                    Custom Path
+                  </Badge>
+                )}
+              </div>
+
+              {potplayerDetected && (
+                <div className="p-3 rounded-lg bg-secondary/30 border border-border/40 text-xs font-mono text-muted-foreground break-all">
+                  {potplayerDetected}
+                </div>
+              )}
+            </div>
+
+            {/* Custom player path */}
+            <div className="rounded-xl border border-border bg-card p-4 space-y-3">
+              <div>
+                <div className="font-semibold text-foreground">Custom Player Path</div>
+                <div className="text-xs text-muted-foreground">
+                  Override standard player path (e.g. custom PotPlayer, VLC, or MPC-HC executable)
+                </div>
+              </div>
+              <div className="flex gap-2">
+                <input
+                  type="text"
+                  placeholder="C:\Program Files\DAUM\PotPlayer\PotPlayerMini64.exe"
+                  value={preferredPlayerPath}
+                  onChange={(e) => setPreferredPlayerPath(e.target.value)}
+                  className="flex-1 bg-background border border-border rounded-lg px-3 py-2 text-xs font-mono text-foreground focus:outline-none focus:ring-2 focus:ring-primary/50"
+                />
+                <button
+                  onClick={() => {
+                    localStorage.setItem("movie_tracker_preferred_player_path", preferredPlayerPath);
+                    toast({ title: "Player path saved!" });
+                  }}
+                  className="px-4 py-2 rounded-lg bg-primary text-primary-foreground text-xs font-medium hover:opacity-90 transition-opacity"
+                >
+                  Save
+                </button>
+              </div>
             </div>
           </div>
         );

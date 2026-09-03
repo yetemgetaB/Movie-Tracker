@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from "react";
-import { Database, Search, Film, Tv, ArrowUp, ArrowDown, ArrowUpDown, Trash2, Filter, Edit2, X, Check, Eye, Star, Calendar, Clock, AlertTriangle, TrendingUp, Sparkles, Download } from "lucide-react";
+import { Database, Search, Film, Tv, ArrowUp, ArrowDown, ArrowUpDown, Trash2, Filter, Edit2, X, Check, Eye, Star, Calendar, Clock, AlertTriangle, TrendingUp, Sparkles, Download, HardDrive } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -14,6 +14,7 @@ import { getCollection, removeFromCollection, updateCollectionItem, type Collect
 import { toast } from "@/hooks/use-toast";
 import { useNavigate } from "react-router-dom";
 import { formatDisplayDate, getStatusInfo } from "@/lib/dateUtils";
+import LocalMediaView from "@/components/LocalMediaView";
 
 // ── Rating display ───────────────────────────────────────────────
 function formatRating(val: string | undefined | null): { text: string; hasValue: boolean } {
@@ -204,6 +205,7 @@ const VaultPage = () => {
   const [movieSort, setMovieSort] = useState<{ key: MovieSortKey; dir: SortDir }>({ key: "title", dir: null });
   const [seriesSort, setSeriesSort] = useState<{ key: SeriesSortKey; dir: SortDir }>({ key: "title", dir: null });
   const [genreFilter, setGenreFilter] = useState("all");
+  const [libraryMode, setLibraryMode] = useState<"vault" | "local">("vault");
   const [editItem, setEditItem] = useState<CollectionItem | null>(null);
   const [viewMode, setViewMode] = useState<"table" | "grid">("table");
   const [deleteConfirm, setDeleteConfirm] = useState<{ id: number; type: "movie" | "series"; title: string } | null>(null);
@@ -429,17 +431,49 @@ const VaultPage = () => {
 
   return (
     <div className="px-6 pt-6 pb-24 space-y-4">
-      <div className="fade-up">
-        <h1 className="text-2xl font-bold font-display flex items-center gap-2">
-          <Database size={22} className="text-primary" />
-          Vault
-        </h1>
-        <p className="text-sm text-muted-foreground mt-1">
-          Your complete collection · {movies.length} movies · {series.length} series
-        </p>
+      <div className="fade-up flex flex-wrap items-center justify-between gap-3">
+        <div>
+          <h1 className="text-2xl font-bold font-display flex items-center gap-2">
+            <Database size={22} className="text-primary" />
+            Library
+          </h1>
+          <p className="text-sm text-muted-foreground mt-1">
+            {libraryMode === "vault"
+              ? `Your complete collection · ${movies.length} movies · ${series.length} series`
+              : "Direct playback and disk management for your video files"}
+          </p>
+        </div>
+
+        {/* Mode switcher */}
+        <div className="flex bg-secondary/50 p-1 rounded-xl border border-border/50">
+          <button
+            onClick={() => setLibraryMode("vault")}
+            className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all flex items-center gap-1.5 ${
+              libraryMode === "vault"
+                ? "bg-primary text-primary-foreground shadow-sm"
+                : "text-muted-foreground hover:text-foreground"
+            }`}
+          >
+            <Database size={13} /> Vault
+          </button>
+          <button
+            onClick={() => setLibraryMode("local")}
+            className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all flex items-center gap-1.5 ${
+              libraryMode === "local"
+                ? "bg-primary text-primary-foreground shadow-sm"
+                : "text-muted-foreground hover:text-foreground"
+            }`}
+          >
+            <HardDrive size={13} /> Local Media
+          </button>
+        </div>
       </div>
 
-      <VaultStats movies={movies} series={series} />
+      {libraryMode === "local" ? (
+        <LocalMediaView />
+      ) : (
+        <>
+          <VaultStats movies={movies} series={series} />
 
       {/* Search + Filter + View Toggle */}
       <div className="flex gap-2 fade-up" style={{ animationDelay: "0.1s" }}>
@@ -714,6 +748,8 @@ const VaultPage = () => {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+        </>
+      )}
     </div>
   );
 };

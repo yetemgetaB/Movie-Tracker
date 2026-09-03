@@ -7,6 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [1.3.7] - 2026-09-03
+
+### Added
+- **Local Media Folder Scanner**: Native recursive video file scanning across custom directories with resolution parsing and format detection.
+- **PotPlayer One-Click Direct Launcher**: Native Windows integration with autodetected PotPlayer (`PotPlayerMini64.exe`), custom player path overrides, and fallback to system default.
+- **Episode & Movie Regex Matcher**: Intelligent scene release filename parser (`S01E01`, `1x01`, `1080p`, `4K`, `BluRay`) automatically grouped into seasons and episodes.
+- **TMDB Auto-Enrichment**: Matches local filenames with TMDB posters, overviews, ratings, and backdrops.
+- **Playback Tracking**: Launching media files automatically tracks playback start date in the collection.
+
+---
+
 ## [1.3.6] - 2026-09-03
 
 ### Added
