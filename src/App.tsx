@@ -1,4 +1,4 @@
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect } from "react";
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -17,6 +17,8 @@ import SettingsPage from "./pages/SettingsPage";
 import AnalyticsPage from "./pages/AnalyticsPage";
 import WatchlistPage from "./pages/WatchlistPage";
 import NotFound from "./pages/NotFound";
+import { initDatabase } from "@/lib/db";
+import { syncCollectionFromSqlite } from "@/lib/collection";
 
 const queryClient = new QueryClient();
 
@@ -34,6 +36,14 @@ const LayoutWrapper = ({ children }: { children: React.ReactNode }) => {
 const App = () => {
   const [loading, setLoading] = useState(true);
   const handleFinished = useCallback(() => setLoading(false), []);
+
+  useEffect(() => {
+    initDatabase().then(() => {
+      syncCollectionFromSqlite();
+    }).catch(err => {
+      console.error("Database initialization failed:", err);
+    });
+  }, []);
 
   return (
     <>

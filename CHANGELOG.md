@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [1.3.6] - 2026-09-03
+
+### Added
+- **Local-First SQLite Database Engine**: Integrated `@tauri-apps/plugin-sql` and `tauri-plugin-sql` with persistent `sqlite:movie_tracker.db` database.
+- **Zero-Data-Loss Migration**: Automatic detection and safe migration of existing `localStorage` data to SQLite with immutable safety snapshots (`movie_tracker_pre_sqlite_backup_*`).
+- **Dual-Write Safety Shadow**: Write operations safely update both SQLite and the persistent store, maintaining full compatibility across desktop and web environments.
+
+---
+
 ## [1.3.5] - 2026-09-03
 
 ### Added

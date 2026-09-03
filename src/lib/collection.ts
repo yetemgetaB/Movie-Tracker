@@ -1,4 +1,5 @@
-// Collection store – localStorage with reactive listeners & in-memory cache
+// Collection store – localStorage & SQLite with reactive listeners & in-memory cache
+import { isTauri, fetchCollectionFromDb, dbSaveCollectionItem, dbRemoveCollectionItem } from "./db";
 
 export interface BaseCollectionItem {
   id: number;
@@ -114,6 +115,16 @@ export function invalidateCollectionCache(): void {
   notifyListeners();
 }
 
+export async function syncCollectionFromSqlite(): Promise<void> {
+  if (!isTauri()) return;
+  const dbItems = await fetchCollectionFromDb();
+  if (dbItems.length > 0) {
+    collectionCache = dbItems;
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(dbItems));
+    notifyListeners();
+  }
+}
+
 export function addToCollection(item: CollectionItem): void {
   const items = [...getLocalCollection()];
   const existing = items.findIndex(i => i.id === item.id && i.type === item.type);
@@ -123,6 +134,9 @@ export function addToCollection(item: CollectionItem): void {
     items.push(item);
   }
   saveLocalCollection(items);
+  if (isTauri()) {
+    dbSaveCollectionItem(item).catch(err => console.error("SQLite save error:", err));
+  }
 }
 
 export function removeFromCollection(id: number, type?: "movie" | "series"): void {
@@ -130,13 +144,24 @@ export function removeFromCollection(id: number, type?: "movie" | "series"): voi
     type ? !(i.id === id && i.type === type) : i.id !== id
   );
   saveLocalCollection(items);
+  if (isTauri()) {
+    dbRemoveCollectionItem(id, type).catch(err => console.error("SQLite remove error:", err));
+  }
 }
 
 export function updateCollectionItem(id: number, updates: Partial<CollectionItem>, type?: "movie" | "series"): void {
-  const items = getLocalCollection().map(item =>
-    item.id === id && (type ? item.type === type : true) ? ({ ...item, ...updates } as CollectionItem) : item
-  );
+  let updatedItem: CollectionItem | undefined;
+  const items = getLocalCollection().map(item => {
+    if (item.id === id && (type ? item.type === type : true)) {
+      updatedItem = { ...item, ...updates } as CollectionItem;
+      return updatedItem;
+    }
+    return item;
+  });
   saveLocalCollection(items);
+  if (isTauri() && updatedItem) {
+    dbSaveCollectionItem(updatedItem).catch(err => console.error("SQLite update error:", err));
+  }
 }
 
 export function isInCollection(id: number, type?: "movie" | "series"): boolean {
