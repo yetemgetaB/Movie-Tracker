@@ -177,16 +177,16 @@ export interface OmdbSeason {
 
 // --- Movie API ---
 export const tmdbApi = {
-  trending: () =>
-    tmdb<{ results: TmdbMovie[] }>("/trending/movie/week").then((r) => r.results),
-  popular: () =>
-    tmdb<{ results: TmdbMovie[] }>("/movie/popular").then((r) => r.results),
-  topRated: () =>
-    tmdb<{ results: TmdbMovie[] }>("/movie/top_rated").then((r) => r.results),
-  nowPlaying: () =>
-    tmdb<{ results: TmdbMovie[] }>("/movie/now_playing").then((r) => r.results),
-  upcoming: () =>
-    tmdb<{ results: TmdbMovie[] }>("/movie/upcoming").then((r) => r.results),
+  trending: (page = 1) =>
+    tmdb<{ results: TmdbMovie[] }>("/trending/movie/week", { page: String(page) }).then((r) => r.results),
+  popular: (page = 1) =>
+    tmdb<{ results: TmdbMovie[] }>("/movie/popular", { page: String(page) }).then((r) => r.results),
+  topRated: (page = 1) =>
+    tmdb<{ results: TmdbMovie[] }>("/movie/top_rated", { page: String(page) }).then((r) => r.results),
+  nowPlaying: (page = 1) =>
+    tmdb<{ results: TmdbMovie[] }>("/movie/now_playing", { page: String(page) }).then((r) => r.results),
+  upcoming: (page = 1) =>
+    tmdb<{ results: TmdbMovie[] }>("/movie/upcoming", { page: String(page) }).then((r) => r.results),
   search: (query: string, page = 1) =>
     tmdb<{ results: TmdbMovie[]; total_results: number; total_pages: number }>(
       "/search/movie",
@@ -299,14 +299,14 @@ export interface TmdbSeasonDetail {
 }
 
 export const tmdbSeriesApi = {
-  trending: () =>
-    tmdb<{ results: TmdbSeries[] }>("/trending/tv/week").then((r) => r.results),
-  popular: () =>
-    tmdb<{ results: TmdbSeries[] }>("/tv/popular").then((r) => r.results),
-  topRated: () =>
-    tmdb<{ results: TmdbSeries[] }>("/tv/top_rated").then((r) => r.results),
-  airingToday: () =>
-    tmdb<{ results: TmdbSeries[] }>("/tv/airing_today").then((r) => r.results),
+  trending: (page = 1) =>
+    tmdb<{ results: TmdbSeries[] }>("/trending/tv/week", { page: String(page) }).then((r) => r.results),
+  popular: (page = 1) =>
+    tmdb<{ results: TmdbSeries[] }>("/tv/popular", { page: String(page) }).then((r) => r.results),
+  topRated: (page = 1) =>
+    tmdb<{ results: TmdbSeries[] }>("/tv/top_rated", { page: String(page) }).then((r) => r.results),
+  airingToday: (page = 1) =>
+    tmdb<{ results: TmdbSeries[] }>("/tv/airing_today", { page: String(page) }).then((r) => r.results),
   search: (query: string, page = 1) =>
     tmdb<{ results: TmdbSeries[]; total_results: number; total_pages: number }>(
       "/search/tv",

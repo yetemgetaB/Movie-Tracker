@@ -1,6 +1,11 @@
 import { useLocation } from "react-router-dom";
-import { Minus, Square, X } from "lucide-react";
+import { Minus, Square, X, Dices, Keyboard } from "lucide-react";
 import { useEffect, useState } from "react";
+
+interface TitlebarProps {
+  onOpenRoulette?: () => void;
+  onOpenShortcuts?: () => void;
+}
 
 const ROUTE_TITLES: Record<string, string> = {
   "/": "Home",
@@ -14,7 +19,7 @@ const ROUTE_TITLES: Record<string, string> = {
   "/settings": "Settings",
 };
 
-const Titlebar = () => {
+const Titlebar = ({ onOpenRoulette, onOpenShortcuts }: TitlebarProps) => {
   const location = useLocation();
   const [isTauri, setIsTauri] = useState(false);
   const [isMaximized, setIsMaximized] = useState(false);
@@ -77,10 +82,30 @@ const Titlebar = () => {
         </span>
       </div>
 
-      {/* Right: Window controls — always shown, functional only in Tauri */}
+      {/* Right: Quick actions & Window controls */}
       <div className="flex items-center h-full">
+        {onOpenRoulette && (
           <button
-            onClick={handleMinimize}
+            onClick={onOpenRoulette}
+            className="titlebar-btn h-full px-2.5 flex items-center justify-center gap-1 hover:bg-secondary/60 transition-colors text-muted-foreground hover:text-foreground text-[11px]"
+            title="What to Watch Roulette (R)"
+          >
+            <Dices size={13} className="text-primary" />
+            <span className="hidden sm:inline font-medium">Roulette</span>
+          </button>
+        )}
+        {onOpenShortcuts && (
+          <button
+            onClick={onOpenShortcuts}
+            className="titlebar-btn h-full px-2.5 flex items-center justify-center hover:bg-secondary/60 transition-colors text-muted-foreground hover:text-foreground"
+            title="Keyboard Shortcuts (?)"
+          >
+            <Keyboard size={13} />
+          </button>
+        )}
+        <div className="h-3 w-px bg-border/40 mx-1" />
+        <button
+          onClick={handleMinimize}
             className="titlebar-btn h-full px-3 flex items-center justify-center hover:bg-secondary/60 transition-colors"
             aria-label="Minimize"
           >

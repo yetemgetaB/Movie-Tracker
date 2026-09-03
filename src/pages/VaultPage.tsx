@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from "react";
-import { Database, Search, Film, Tv, ArrowUp, ArrowDown, ArrowUpDown, Trash2, Filter, Edit2, X, Check, Eye, Star, Calendar, Clock, AlertTriangle, TrendingUp, Sparkles } from "lucide-react";
+import { Database, Search, Film, Tv, ArrowUp, ArrowDown, ArrowUpDown, Trash2, Filter, Edit2, X, Check, Eye, Star, Calendar, Clock, AlertTriangle, TrendingUp, Sparkles, Download } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -7,6 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { getCollection, removeFromCollection, updateCollectionItem, type CollectionItem, type CollectionMovie, type CollectionSeries } from "@/lib/collection";
@@ -206,6 +207,8 @@ const VaultPage = () => {
   const [editItem, setEditItem] = useState<CollectionItem | null>(null);
   const [viewMode, setViewMode] = useState<"table" | "grid">("table");
   const [deleteConfirm, setDeleteConfirm] = useState<{ id: number; type: "movie" | "series"; title: string } | null>(null);
+  const [selectedKeys, setSelectedKeys] = useState<Set<string>>(new Set());
+  const [bulkDeleteOpen, setBulkDeleteOpen] = useState(false);
 
   const loadCollection = () => setCollection(getCollection());
 
@@ -267,6 +270,53 @@ const VaultPage = () => {
     loadCollection();
     toast({ title: `${deleteConfirm.title} removed from Vault` });
     setDeleteConfirm(null);
+  };
+
+  const toggleSelect = (id: number, type: string) => {
+    const key = `${id}-${type}`;
+    setSelectedKeys((prev) => {
+      const next = new Set(prev);
+      if (next.has(key)) next.delete(key);
+      else next.add(key);
+      return next;
+    });
+  };
+
+  const selectAllTab = (items: CollectionItem[]) => {
+    setSelectedKeys((prev) => {
+      const allSelected = items.length > 0 && items.every((i) => prev.has(`${i.id}-${i.type}`));
+      const next = new Set(prev);
+      if (allSelected) {
+        items.forEach((i) => next.delete(`${i.id}-${i.type}`));
+      } else {
+        items.forEach((i) => next.add(`${i.id}-${i.type}`));
+      }
+      return next;
+    });
+  };
+
+  const handleBulkDelete = () => {
+    selectedKeys.forEach((key) => {
+      const [idStr, type] = key.split("-");
+      removeFromCollection(parseInt(idStr, 10), type as "movie" | "series");
+    });
+    const count = selectedKeys.size;
+    setSelectedKeys(new Set());
+    loadCollection();
+    setBulkDeleteOpen(false);
+    toast({ title: `Removed ${count} items from Vault` });
+  };
+
+  const handleBulkExport = () => {
+    const selectedItems = collection.filter((i) => selectedKeys.has(`${i.id}-${i.type}`));
+    const blob = new Blob([JSON.stringify(selectedItems, null, 2)], { type: "application/json" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `movie-tracker-export-${new Date().toISOString().slice(0, 10)}.json`;
+    a.click();
+    URL.revokeObjectURL(url);
+    toast({ title: `Exported ${selectedItems.length} items to JSON` });
   };
 
   const handleSaveEdit = (updates: Partial<CollectionItem>) => {
@@ -450,6 +500,13 @@ const VaultPage = () => {
                   <Table>
                     <TableHeader className="sticky top-0 bg-card/95 backdrop-blur-sm z-10">
                       <TableRow className="border-border/50 hover:bg-transparent">
+                        <TableHead className="w-10 px-3">
+                          <Checkbox
+                            checked={filteredMovies.length > 0 && filteredMovies.every((m) => selectedKeys.has(`${m.id}-${m.type}`))}
+                            onCheckedChange={() => selectAllTab(filteredMovies)}
+                            aria-label="Select all movies"
+                          />
+                        </TableHead>
                         <TableHead className="text-muted-foreground text-xs uppercase tracking-wider w-14"></TableHead>
                         <MovieSortHeader label="Title" sortKey="title" />
                         <MovieSortHeader label="Genre" sortKey="genre" />
@@ -466,9 +523,16 @@ const VaultPage = () => {
                       {filteredMovies.map((m, i) => (
                         <TableRow
                           key={m.id}
-                          className={`border-border/20 hover:bg-primary/5 cursor-pointer transition-colors ${i % 2 === 1 ? "bg-secondary/10" : ""}`}
+                          className={`border-border/20 hover:bg-primary/5 cursor-pointer transition-colors ${selectedKeys.has(`${m.id}-${m.type}`) ? "bg-primary/10" : i % 2 === 1 ? "bg-secondary/10" : ""}`}
                           onClick={() => handleRowClick(m)}
                         >
+                          <TableCell className="w-10 px-3 py-2" onClick={(e) => e.stopPropagation()}>
+                            <Checkbox
+                              checked={selectedKeys.has(`${m.id}-${m.type}`)}
+                              onCheckedChange={() => toggleSelect(m.id, m.type)}
+                              aria-label={`Select ${m.title}`}
+                            />
+                          </TableCell>
                           <TableCell className="py-2"><PosterImage src={m.poster} title={m.title} className="w-10 h-14" /></TableCell>
                           <TableCell className="font-medium">{m.title}</TableCell>
                           <TableCell><Badge variant="secondary" className="text-xs font-normal">{m.genre.split(",")[0]?.trim()}</Badge></TableCell>
@@ -513,6 +577,13 @@ const VaultPage = () => {
                   <Table>
                     <TableHeader className="sticky top-0 bg-card/95 backdrop-blur-sm z-10">
                       <TableRow className="border-border/50 hover:bg-transparent">
+                        <TableHead className="w-10 px-3">
+                          <Checkbox
+                            checked={filteredSeries.length > 0 && filteredSeries.every((s) => selectedKeys.has(`${s.id}-${s.type}`))}
+                            onCheckedChange={() => selectAllTab(filteredSeries)}
+                            aria-label="Select all series"
+                          />
+                        </TableHead>
                         <TableHead className="text-muted-foreground text-xs uppercase tracking-wider w-14"></TableHead>
                         <SeriesSortHeader label="Title" sortKey="title" />
                         <SeriesSortHeader label="Seasons" sortKey="seasons" />
@@ -532,9 +603,16 @@ const VaultPage = () => {
                         return (
                           <TableRow
                             key={s.id}
-                            className={`border-border/20 hover:bg-primary/5 cursor-pointer transition-colors ${i % 2 === 1 ? "bg-secondary/10" : ""}`}
+                            className={`border-border/20 hover:bg-primary/5 cursor-pointer transition-colors ${selectedKeys.has(`${s.id}-${s.type}`) ? "bg-primary/10" : i % 2 === 1 ? "bg-secondary/10" : ""}`}
                             onClick={() => handleRowClick(s)}
                           >
+                            <TableCell className="w-10 px-3 py-2" onClick={(e) => e.stopPropagation()}>
+                              <Checkbox
+                                checked={selectedKeys.has(`${s.id}-${s.type}`)}
+                                onCheckedChange={() => toggleSelect(s.id, s.type)}
+                                aria-label={`Select ${s.title}`}
+                              />
+                            </TableCell>
                             <TableCell className="py-2"><PosterImage src={s.poster} title={s.title} className="w-10 h-14" /></TableCell>
                             <TableCell className="font-medium">{s.title}</TableCell>
                             <TableCell className="text-muted-foreground text-sm">{s.seasons}</TableCell>
@@ -589,6 +667,49 @@ const VaultPage = () => {
             <AlertDialogCancel>Cancel</AlertDialogCancel>
             <AlertDialogAction onClick={confirmRemove} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
               Remove
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Floating Bulk Action Bar */}
+      {selectedKeys.size > 0 && (
+        <div className="fixed bottom-14 left-1/2 -translate-x-1/2 z-50 bg-card/95 backdrop-blur-md border border-border px-5 py-2.5 rounded-full shadow-2xl flex items-center gap-3 animate-in fade-in slide-in-from-bottom-3 duration-200">
+          <span className="text-xs font-semibold text-foreground">
+            {selectedKeys.size} selected
+          </span>
+          <div className="h-4 w-px bg-border/60" />
+          <Button size="sm" variant="outline" onClick={handleBulkExport} className="h-7 text-xs gap-1.5 rounded-full">
+            <Download size={12} /> Export
+          </Button>
+          <Button size="sm" variant="destructive" onClick={() => setBulkDeleteOpen(true)} className="h-7 text-xs gap-1.5 rounded-full">
+            <Trash2 size={12} /> Delete
+          </Button>
+          <button
+            onClick={() => setSelectedKeys(new Set())}
+            className="text-muted-foreground hover:text-foreground text-xs p-1 rounded-full hover:bg-secondary/60 transition-colors"
+            title="Clear selection"
+          >
+            <X size={14} />
+          </button>
+        </div>
+      )}
+
+      {/* Bulk Delete Dialog */}
+      <AlertDialog open={bulkDeleteOpen} onOpenChange={setBulkDeleteOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle className="flex items-center gap-2">
+              <AlertTriangle size={18} className="text-destructive" /> Delete {selectedKeys.size} selected items?
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to permanently remove {selectedKeys.size} selected items from your Vault? This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={handleBulkDelete} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+              Delete Selected
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

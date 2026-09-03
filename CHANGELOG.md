@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [1.3.5] - 2026-09-03
+
+### Added
+- **"What to Watch Tonight" Roulette**: Cinematic decision engine with configurable source (Watchlist, Vault, Trending), filters (runtime, genre, rating), spin animation, and trailer preview (`R` key or Titlebar icon).
+- **Keyboard Shortcuts Cheat Sheet (`?`)**: Native keybindings overlay showing all quick actions and page navigation hotkeys.
+- **Vault Bulk Operations**: Multi-select checkboxes in library tables with floating toolbar for bulk deletion and JSON export.
+- **Search & Discover Pagination**: "Load More" pagination across Movies and TV Series discovery pages.
+
+---
+
 ## [1.3.4] - 2026-09-03
 
 ### Fixed

@@ -1,9 +1,11 @@
 import { ReactNode, useEffect, useState } from "react";
-import { useLocation } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 import BottomNav from "./BottomNav";
 import NotificationBell from "./NotificationBell";
 import Titlebar from "./Titlebar";
 import CommandPalette from "./CommandPalette";
+import RouletteModal from "./RouletteModal";
+import ShortcutsModal from "./ShortcutsModal";
 import { initAccentColor } from "@/hooks/use-accent-color";
 import { initPlugins } from "@/lib/plugins";
 import { checkAchievements } from "@/lib/achievements";
@@ -15,7 +17,10 @@ interface AppLayoutProps {
 
 const AppLayout = ({ children }: AppLayoutProps) => {
   const location = useLocation();
+  const navigate = useNavigate();
   const [navVisible, setNavVisible] = useState(true);
+  const [rouletteOpen, setRouletteOpen] = useState(false);
+  const [shortcutsOpen, setShortcutsOpen] = useState(false);
 
   useEffect(() => {
     initAccentColor();
@@ -29,14 +34,61 @@ const AppLayout = ({ children }: AppLayoutProps) => {
     });
   }, [location.pathname]);
 
+  // Global keybindings
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      const target = e.target as HTMLElement;
+      if (target.tagName === "INPUT" || target.tagName === "TEXTAREA" || target.isContentEditable) {
+        return;
+      }
+
+      if (e.key === "?") {
+        e.preventDefault();
+        setShortcutsOpen((o) => !o);
+      } else if (e.key === "r" || e.key === "R") {
+        if (!e.ctrlKey && !e.metaKey && !e.altKey) {
+          e.preventDefault();
+          setRouletteOpen(true);
+        }
+      } else if (["1", "2", "3", "4", "5", "6", "7", "8", "9"].includes(e.key)) {
+        if (!e.ctrlKey && !e.metaKey && !e.altKey) {
+          const routes = [
+            "/",
+            "/movies",
+            "/series",
+            "/browse",
+            "/library",
+            "/watchlist",
+            "/calendar",
+            "/analytics",
+            "/settings",
+          ];
+          const idx = parseInt(e.key, 10) - 1;
+          if (routes[idx]) {
+            e.preventDefault();
+            navigate(routes[idx]);
+          }
+        }
+      }
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [navigate]);
+
   return (
     <div className="min-h-screen mica-bg">
       <a href="#main-content" className="sr-only focus:not-sr-only focus:absolute focus:top-2 focus:left-2 focus:z-[100] focus:px-4 focus:py-2 focus:bg-primary focus:text-primary-foreground focus:rounded-lg">
         Skip to content
       </a>
-      <Titlebar />
+      <Titlebar
+        onOpenRoulette={() => setRouletteOpen(true)}
+        onOpenShortcuts={() => setShortcutsOpen(true)}
+      />
       <NotificationBell visible={navVisible} />
       <CommandPalette />
+      <RouletteModal open={rouletteOpen} onOpenChange={setRouletteOpen} />
+      <ShortcutsModal open={shortcutsOpen} onOpenChange={setShortcutsOpen} />
       <main id="main-content" className="pt-9 pb-28" role="main">{children}</main>
       <BottomNav onVisibilityChange={setNavVisible} />
     </div>

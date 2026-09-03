@@ -102,6 +102,44 @@ const MoviesPage = () => {
     staleTime: 1000 * 60 * 10,
   });
 
+  // Pagination
+  const [page, setPage] = useState(1);
+  const [extraMovies, setExtraMovies] = useState<TmdbMovie[]>([]);
+  const [loadingMore, setLoadingMore] = useState(false);
+
+  useEffect(() => {
+    setPage(1);
+    setExtraMovies([]);
+  }, [searchTerm, selectedGenre, yearRange, ratingMin, runtimeMax, sortBy]);
+
+  const loadMore = async () => {
+    const nextPage = page + 1;
+    setLoadingMore(true);
+    try {
+      if (searchTerm) {
+        const res = await tmdbApi.search(searchTerm, nextPage);
+        setExtraMovies((prev) => [...prev, ...(res.results || [])]);
+      } else {
+        const params: Record<string, string> = {
+          sort_by: sortBy,
+          "vote_average.gte": String(ratingMin),
+          "primary_release_date.gte": `${yearRange[0]}-01-01`,
+          "primary_release_date.lte": `${yearRange[1]}-12-31`,
+          "with_runtime.lte": String(runtimeMax),
+          page: String(nextPage),
+        };
+        if (selectedGenre) params.with_genres = String(selectedGenre);
+        const res = await tmdbApi.discover(params);
+        setExtraMovies((prev) => [...prev, ...res]);
+      }
+      setPage(nextPage);
+    } catch (err) {
+      console.error("Failed to load more movies:", err);
+    } finally {
+      setLoadingMore(false);
+    }
+  };
+
   const handleSearch = useCallback(() => {
     if (!query.trim()) return;
     addToSearchHistory(query.trim());
@@ -129,7 +167,8 @@ const MoviesPage = () => {
 
   const history = getSearchHistory();
   const showSuggestions = query.length >= 2 && !searchTerm && suggestions.length > 0;
-  const displayResults = searchTerm ? searchResults : discoverResults;
+  const baseResults = searchTerm ? searchResults : discoverResults;
+  const displayResults = [...baseResults, ...extraMovies];
   const isLoading = isFetching || loadingDiscover;
 
   return (
@@ -387,7 +426,23 @@ const MoviesPage = () => {
             ))}
           </div>
         )
-      ) : !searchTerm ? (
+      ) : null}
+
+      {/* Load More Button */}
+      {!isLoading && displayResults.length >= 10 && (
+        <div className="flex justify-center pt-2 pb-6">
+          <Button
+            variant="outline"
+            onClick={loadMore}
+            disabled={loadingMore}
+            className="gap-2 px-6 bg-secondary/40 border-border/60 hover:bg-primary hover:text-primary-foreground transition-all text-xs"
+          >
+            {loadingMore ? "Loading more..." : "Load More Movies"}
+          </Button>
+        </div>
+      )}
+
+      {!isLoading && displayResults.length === 0 && !searchTerm ? (
         // You might also like
         collection.length > 0 && trending.length > 0 ? (
           <div className="space-y-3 px-2">

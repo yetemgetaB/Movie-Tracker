@@ -79,6 +79,43 @@ const SeriesPage = () => {
     staleTime: 1000 * 60 * 10,
   });
 
+  // Pagination
+  const [page, setPage] = useState(1);
+  const [extraSeries, setExtraSeries] = useState<TmdbSeries[]>([]);
+  const [loadingMore, setLoadingMore] = useState(false);
+
+  useEffect(() => {
+    setPage(1);
+    setExtraSeries([]);
+  }, [searchTerm, selectedGenre, yearRange, ratingMin, sortBy]);
+
+  const loadMore = async () => {
+    const nextPage = page + 1;
+    setLoadingMore(true);
+    try {
+      if (searchTerm) {
+        const res = await tmdbSeriesApi.search(searchTerm, nextPage);
+        setExtraSeries((prev) => [...prev, ...(res.results || [])]);
+      } else {
+        const params: Record<string, string> = {
+          sort_by: sortBy,
+          "vote_average.gte": String(ratingMin),
+          "first_air_date.gte": `${yearRange[0]}-01-01`,
+          "first_air_date.lte": `${yearRange[1]}-12-31`,
+          page: String(nextPage),
+          ...(selectedGenre ? { with_genres: String(selectedGenre) } : {}),
+        };
+        const res = await tmdbSeriesApi.discover(params);
+        setExtraSeries((prev) => [...prev, ...res]);
+      }
+      setPage(nextPage);
+    } catch (err) {
+      console.error("Failed to load more series:", err);
+    } finally {
+      setLoadingMore(false);
+    }
+  };
+
   const handleSearch = () => {
     if (!query.trim()) return;
     addToHistory(query.trim());
@@ -101,7 +138,8 @@ const SeriesPage = () => {
     );
   }
 
-  const displayResults = searchTerm ? searchResults : discoverResults;
+  const baseResults = searchTerm ? searchResults : discoverResults;
+  const displayResults = [...baseResults, ...extraSeries];
   const isLoading = isFetching || loadingDiscover;
   const history = getSearchHistory();
   const showSuggestions = query.length >= 2 && !searchTerm && suggestions.length > 0;
@@ -263,6 +301,20 @@ const SeriesPage = () => {
         <div className="glass-panel p-12 text-center fade-up mx-2">
           <Tv size={48} className="mx-auto mb-3 text-muted-foreground/30" />
           <p className="text-muted-foreground text-sm">Search or browse series</p>
+        </div>
+      )}
+
+      {/* Load More Button */}
+      {!isLoading && displayResults.length >= 10 && (
+        <div className="flex justify-center pt-2 pb-6">
+          <Button
+            variant="outline"
+            onClick={loadMore}
+            disabled={loadingMore}
+            className="gap-2 px-6 bg-secondary/40 border-border/60 hover:bg-primary hover:text-primary-foreground transition-all text-xs"
+          >
+            {loadingMore ? "Loading more..." : "Load More Series"}
+          </Button>
         </div>
       )}
 
