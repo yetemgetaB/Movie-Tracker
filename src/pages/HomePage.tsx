@@ -289,9 +289,11 @@ const HeroBanner = ({
       {/* Background */}
       {showVideo && trailerKey ? (
         <iframe
-          src={`https://www.youtube.com/embed/${trailerKey}?autoplay=1&mute=${muted ? 1 : 0}&controls=0&loop=1&playlist=${trailerKey}&modestbranding=1&iv_load_policy=3`}
+          src={`https://www.youtube-nocookie.com/embed/${trailerKey}?autoplay=1&mute=${muted ? 1 : 0}&controls=0&loop=1&playlist=${trailerKey}&modestbranding=1&iv_load_policy=3`}
           className="absolute inset-0 w-full h-full scale-150 pointer-events-none"
-          allow="autoplay"
+          allow="autoplay; encrypted-media"
+          sandbox="allow-scripts allow-same-origin allow-presentation"
+          loading="lazy"
           title="Hero trailer"
         />
       ) : (

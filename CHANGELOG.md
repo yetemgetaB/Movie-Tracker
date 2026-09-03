@@ -7,6 +7,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [1.3.4] - 2026-09-03
+
+### Fixed
+- Rectified `CollectionMovie` and `CollectionSeries` domain models with shared `BaseCollectionItem`.
+- Fixed cross-type ID collision deletions and queries in `removeFromCollection` and `isInCollection`.
+- Added YouTube embed iframe sandboxing and lazy-loading in HeroBanner.
+
+### Added
+- Created reactive `useCollection` hook powered by `useSyncExternalStore` and in-memory caching.
+- Enforced strict Content Security Policy (CSP) in `tauri.conf.json`.
+
+---
+
 ## [1.3.3] - 2026-09-03
 
 ### Changed

@@ -14,7 +14,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Progress } from '@/components/ui/progress';
-import { getCollection } from '@/lib/collection';
+import { useCollection } from '@/hooks/use-collection';
 import { getAllAchievementsWithStatus } from '@/lib/achievements';
 import { generateStatsText, shareContent, generateShareCard, shareImage } from '@/lib/sharing';
 import { getGoal, setGoal, getCurrentMonthKey } from '@/lib/watchGoals';
@@ -52,9 +52,7 @@ const StatCard = ({ icon: Icon, label, value, sub, color }: {
 );
 
 const AnalyticsPage = () => {
-  const collection = useMemo(() => getCollection(), []);
-  const movies = collection.filter(i => i.type === "movie");
-  const series = collection.filter(i => i.type === "series");
+  const { collection, movies, series } = useCollection();
 
   // ── Core Stats ─────────────────────────────────────────────────────────────
   const stats = useMemo(() => {
